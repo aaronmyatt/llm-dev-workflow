@@ -17,9 +17,7 @@ init_database() {
     fi
 }
 
-if [ ! -f "$LLMDEV_DB" ]; then
-    init_database
-fi
+init_database
 
 function show_help() {
     cat << EOF
