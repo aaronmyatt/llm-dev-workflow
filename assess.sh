@@ -13,6 +13,9 @@ CHANGE_REQUEST=""
 CODEBASE_PATH="."
 EXTENSIONS=""
 timestamp=$(date "+%Y-%m-%d %H:%M:%S")
+SAVE_CHANGE_REQUESTS=${SAVE_CHANGE_REQUESTS:-true}
+
+. lib/db.sh
 
 check_dependencies() {
     local missing=0
@@ -155,6 +158,11 @@ fi
 # Show the change request if provided
 if [[ -n "$CHANGE_REQUEST" ]]; then
     echo "Change request: $CHANGE_REQUEST"
+fi
+
+if [[ "$SAVE_CHANGE_REQUESTS" == "true" ]]; then
+    WORKFLOW_ID=$(insert_workflow "$CHANGE_REQUEST")
+    echo "Created workflow #$WORKFLOW_ID"
 fi
 
 # Convert to absolute path

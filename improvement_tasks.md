@@ -1,125 +1,68 @@
 ## Implementation Sequence
 
-1. Add SQLite3 Dependency Check DONE
-   - What: Add sqlite3 to dependency checking in assess.sh
+1. Add Database Insert Test DONE
+   - What: Create unit test for inserting change request into workflows table
+   - Where: tests/test_db.sh
+   - ```bash
+   test_insert_workflow() {
+     local change_request="test request"
+     local result=$(insert_workflow "$change_request")
+     assert_not_null "$result" "Should return workflow id"
+   }
+   ```
+
+2. Create Database Insert Function DONE
+   - What: Add function to insert change request and return id
+   - Where: lib/db.sh +NEW
+   - ```bash
+   insert_workflow() {
+     local change_request="$1"
+     sqlite3 "$DB_PATH" "INSERT INTO workflows (change_request) VALUES ('$change_request') RETURNING id;"
+   }
+   ```
+
+3. Add Save Flag Environment Variable DONE
+   - What: Add env var to toggle saving behavior without breaking existing code
    - Where: assess.sh +20
-   ```bash
-   check_dependencies "files-to-prompt" "llm" "sqlite3"
+   - ```bash 
+   SAVE_CHANGE_REQUESTS=${SAVE_CHANGE_REQUESTS:-true}
    ```
 
-2. Create Global Directory Constants DONE
-   - What: Add constants for global directory and database paths
-   - Where: llmdev +4
-   ```bash
-   # Global directory for llmdev data
-   LLMDEV_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/llmdev"
-   LLMDEV_DB="$LLMDEV_DIR/llmdev.db"
-   ```
-
-3. Add Directory Creation Logic DONE
-   - What: Create global directory if it doesn't exist
-   - Where: llmdev +7
-   ```bash
-   # Create directory if it doesn't exist
-   mkdir -p "$LLMDEV_DIR"
-   ```
-
-4. Create Database Schema Function DONE
-   - What: Add function to define database schema creation SQL
-   - Where: New file: lib/db_schema.sh
-   ```bash
-   create_schema() {
-       cat <<EOF
-    CREATE TABLE IF NOT EXISTS workflows (
-        id INTEGER PRIMARY KEY,
-        change_request TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        status TEXT DEFAULT 'active'
-    );
-
-    CREATE TABLE IF NOT EXISTS tasks (
-        id INTEGER PRIMARY KEY,
-        workflow_id INTEGER,
-        description TEXT,
-        status TEXT DEFAULT 'todo',
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        completed_at DATETIME,
-        FOREIGN KEY(workflow_id) REFERENCES workflows(id)
-    );
-
-    CREATE TABLE IF NOT EXISTS metrics (
-        id INTEGER PRIMARY KEY,
-        workflow_id INTEGER,
-        total_files INTEGER,
-        total_lines INTEGER,
-        recorded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY(workflow_id) REFERENCES workflows(id)
-    );
-EOF
-}
-   ```
-
-5. Add Database Initialization DONE
-   - What: Initialize database if it doesn't exist
-   - Where: llmdev +10
-   ```bash
-   # Source schema creation function
-   . lib/db_schema.sh
-
-   # Initialize database if it doesn't exist
-   if [ ! -f "$LLMDEV_DB" ]; then
-       sqlite3 "$LLMDEV_DB" "$(create_schema)"
+4. Integrate DB Save Into Assessment Flow DONE
+   - What: Call insert_workflow when flag enabled
+   - Where: assess.sh +110
+   - ```bash
+   if [[ "$SAVE_CHANGE_REQUESTS" == "true" ]]; then
+     WORKFLOW_ID=$(insert_workflow "$CHANGE_REQUEST")
+     echo "Created workflow #$WORKFLOW_ID"
    fi
    ```
 
-6. Add Simple Database Test DONE
-   - What: Create test to verify database creation and schema
-   - Where: New file: tests/test_db.sh
-   ```bash
-   #!/usr/bin/env bash
-   set -e
-
-   # Source the main script to get constants
-   . ./llmdev
-
-   # Test database creation
-   test_db_creation() {
-       rm -f "$LLMDEV_DB"
-       ./llmdev --help
-       if [ ! -f "$LLMDEV_DB" ]; then
-           echo "Database was not created"
-           exit 1
-       fi
+5. Add Database Migration Test DONE
+   - What: Ensure workflows table exists on startup
+   - Where: tests/test_db.sh
+   - ```bash
+   test_workflows_table_exists() {
+     local result=$(sqlite3 "$TEST_DB" ".tables workflows")
+     assert_equals "workflows" "$result" "Workflows table should exist"
    }
-
-   # Test schema existence
-   test_schema() {
-       tables=$(sqlite3 "$LLMDEV_DB" ".tables")
-       for table in workflows tasks metrics; do
-           if [[ ! $tables =~ $table ]]; then
-               echo "Missing table: $table"
-               exit 1
-           fi
-       done
-   }
-
-   test_db_creation
-   test_schema
-   echo "Database tests passed"
    ```
 
-7. Add Database Error Handling DONE
-   - What: Add error handling for database operations
-   - Where: llmdev +15
-   ```bash
-   init_database() {
-       if ! sqlite3 "$LLMDEV_DB" "$(create_schema)"; then
-           echo "Error: Failed to initialize database"
-           exit 1
-       fi
+6. Refactor DB Initialization DONE
+   - What: Move schema creation to separate function
+   - Where: lib/db.sh
+   - ```bash
+   init_db() {
+     sqlite3 "$DB_PATH" < lib/dbschema.sh
    }
+   ```
 
-   if [ ! -f "$LLMDEV_DB" ]; then
-       init_database
-   fi
+7. Add Workflow ID to Assessment Report DONE
+   - What: Include workflow ID in report header when available
+   - Where: templates/assessment.md
+   - ```markdown
+   ## Overview
+   - **Date:** {{date}}
+   - **Workflow ID:** {{workflow_id}}
+   - **Change Request:** {{change_request}}
    ```
