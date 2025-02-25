@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+
+# Exit on error
+set -e
+
+function show_help() {
+    cat << EOF
+Usage: llmdev <change-request>|<command> [options]
+
+Commands:
+  <change-request>   Start a new workflow with the specified change request
+  assess, a          Reproduce assessment report
+  plan, p            Reproduce tasks
+  iterate, i         Iterate on current assessment/tasks
+  adjust, j          Reproduce adjustment suggestions
+  document, d        Reproduce documentation suggestions
+
+Options:
+  -h, --help       Show this help message
+EOF
+}
+
+function start_workflow() {
+    # start a new iteration based on the produced assessment+plan 
+    # for the current <change-request>
+
+    # Add error handling around script execution
+    if ! ./assess.sh "$@"; then
+        echo "Error during assessment phase"
+        exit 1
+    fi
+
+    if ! ./plan.sh "$@"; then
+        echo "Error during planning phase"
+        exit 1
+    fi
+
+    if ! ./iterate.sh "$@"; then
+        echo "Error during iteration phase"
+        exit 1
+    fi
+
+     # optionally run adjustment and documentation suggestions
+     # ./adjust.sh "$@"
+     # ./document.sh "$@"
+}
+
+# Parse command
+command=$1
+shift || true
+
+case $command in
+    help|-h|--help)
+        show_help
+        exit 0
+        ;;
+    assess|a)
+        ./assess.sh "$@"
+        ;;
+    plan|p)
+        ./plan.sh "$@"
+        ;;
+    iterate|i)
+        ./iterate.sh "$@"
+        ;;
+    adjust|j)
+        ./adjust.sh "$@"
+        ;;
+    document|d)
+        ./document.sh "$@"
+        ;;
+    *)
+        if [[ -n "$command" ]]; then
+            # Treat as change request
+            ./assess.sh "$command" "$@"
+        else
+            show_help
+            exit 1
+        fi
+        ;;
+esac

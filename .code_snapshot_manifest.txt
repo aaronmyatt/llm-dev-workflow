@@ -1,0 +1,9 @@
+=== Manifest ===
+=== Files ===
+MD5 (/Users/aaronmyatt/Development/llm-workflow/assess.sh) = 3cb55302e67dcd0d1718af37156acc5e
+MD5 (/Users/aaronmyatt/Development/llm-workflow/tests/assess.test.sh) = bf6c6b1c423162c8fbdff4a2ad5694c6
+MD5 (/Users/aaronmyatt/Development/llm-workflow/plan.sh) = 24e6da5088eeb5d7a2a989fef05fe1ef
+MD5 (/Users/aaronmyatt/Development/llm-workflow/.code_snapshot_manifest.txt) = 96b4e2c440756462eb67f8fb58879076
+MD5 (/Users/aaronmyatt/Development/llm-workflow/plan.md) = 2c30d477dd58fd715778db93a3904c11
+MD5 (/Users/aaronmyatt/Development/llm-workflow/dnotes/2025-02-23.md) = 385bc942f15823fad32b538f4d0e8bfb
+MD5 (/Users/aaronmyatt/Development/llm-workflow/dnotes/2025-02-22.md) = 2703aede5114571b298450f053d912d9

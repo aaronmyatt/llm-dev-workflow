@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+
+# Exit on error
+set -e
+
+check_dependencies() {
+    local missing=0
+    for cmd in "$@"; do
+        if ! command -v "$cmd" &> /dev/null; then
+            echo "Error: '$cmd' command is not available"
+            echo "Please install it before running this script"
+            missing=1
+        fi
+    done
+    if [[ $missing -eq 1 ]]; then
+        exit 1
+    fi
+}
+
+check_dependencies "llm" "files-to-prompt"
+
+# Check for assessment report
+if [[ ! -f "assessment_report.md" ]]; then
+    echo "Error: assessment_report.md not found"
+    echo "Please run assess.sh first"
+    exit 1
+fi
+
+# Check for tasks
+if [[ ! -f "improvement_tasks.md" ]]; then
+    echo "Error: improvement_tasks.md not found"
+    echo "Please run plan.sh first"
+    exit 1
+fi
+
+# Generate recommendations use previous step outputs
+echo "Generating adjustment recommendations..."
+{ 
+    cat assessment_report.md
+    cat improvement_tasks.md
+    git diff --no-color
+} | cat | llm -m son "Based on the provided context, please:
+
+1. Suggest additional tests to cover new changes
+2. Suggest refactoring opportunities
+3. Suggest any other enhancements that do not alter the existing functionality
+
+Focus on changes that:
+- Catch edge cases and possible regressions
+- Do not alter current functionality
+- Prioritise breaking the code into small, functional, reusable pieces
+
+Please limit the output to an explanatory note with the suggested code changes."
