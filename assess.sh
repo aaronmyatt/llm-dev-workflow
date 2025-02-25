@@ -70,28 +70,6 @@ generate_metrics() {
     fi
 }
 
-create_snapshot() {
-    local dir=$1
-    local timestamp=$(date +%Y%m%d_%H%M%S)
-    local snapshot_dir=".code_snapshot"
-
-    echo "=== Creating Codebase Snapshot ==="
-    echo "=== Manifest ===" > "${snapshot_dir}_manifest.txt"
-
-    # Create git status if in a git repo
-    if [ -d "$dir/.git" ]; then
-        echo "Git Status:" >> "${snapshot_dir}_git.txt"
-        (cd "$dir" && git status >> "${snapshot_dir}_git.txt" 2>&1)
-        (cd "$dir" && git rev-parse HEAD >> "${snapshot_dir}_git.txt" 2>&1)
-    fi
-
-    # Create list of files with hashes
-    echo "=== Files ===" >> "${snapshot_dir}_manifest.txt"
-    find "$dir" -type f -exec md5 {} \; >> "${snapshot_dir}_manifest.txt" 2>/dev/null || true
-
-    echo "Snapshot created at: ${timestamp}"
-}
-
 generate_code_analysis() {
     local dir=$1
     local CHANGE_REQUEST=$2
@@ -170,7 +148,6 @@ CODEBASE_PATH=$(cd "$CODEBASE_PATH" && pwd)
 
 echo "Starting assessment of codebase at: $CODEBASE_PATH"
 generate_metrics "$CODEBASE_PATH"
-create_snapshot "$CODEBASE_PATH"
 
 # Create markdown report
     cat << EOF > "$REPORT_FILE"
@@ -184,10 +161,6 @@ $CHANGE_REQUEST
 
 ## Metrics
 $(generate_metrics "$CODEBASE_PATH" | sed 's/^/- /')
-
-## Snapshot Information
-- Snapshot manifest: \`.code_snapshot_manifest.txt\`
-$([ -f ".code_snapshot_git.txt" ] && echo "- Git status: \`.code_snapshot_git.txt\`")
 
 ## Scope
 $(generate_code_analysis "$CODEBASE_PATH" "$CHANGE_REQUEST" "$REPORT_FILE")

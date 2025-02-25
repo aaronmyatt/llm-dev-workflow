@@ -1,68 +1,62 @@
 ## Implementation Sequence
 
-1. Add Database Insert Test DONE
-   - What: Create unit test for inserting change request into workflows table
-   - Where: tests/test_db.sh
+1. Add Snapshot Flag Test DONE
+   - What: Add test to verify snapshot creation can be disabled via ENABLE_SNAPSHOTS env var
+   - Where: test/test_assess.sh +0
    - ```bash
-   test_insert_workflow() {
-     local change_request="test request"
-     local result=$(insert_workflow "$change_request")
-     assert_not_null "$result" "Should return workflow id"
+   testSnapshotDisabled() {
+     export ENABLE_SNAPSHOTS=0
+     ./assess.sh .
+     assertFileNotExists ".code_snapshot_manifest.txt"
+     assertFileNotExists ".code_snapshot_git.txt"
+     unset ENABLE_SNAPSHOTS
    }
    ```
 
-2. Create Database Insert Function DONE
-   - What: Add function to insert change request and return id
-   - Where: lib/db.sh +NEW
-   - ```bash
-   insert_workflow() {
-     local change_request="$1"
-     sqlite3 "$DB_PATH" "INSERT INTO workflows (change_request) VALUES ('$change_request') RETURNING id;"
-   }
-   ```
-
-3. Add Save Flag Environment Variable DONE
-   - What: Add env var to toggle saving behavior without breaking existing code
-   - Where: assess.sh +20
+2. Add Snapshot Flag Support  TODO
+   - What: Wrap snapshot creation in environment flag check
+   - Where: assess.sh +53
    - ```bash 
-   SAVE_CHANGE_REQUESTS=${SAVE_CHANGE_REQUESTS:-true}
-   ```
-
-4. Integrate DB Save Into Assessment Flow DONE
-   - What: Call insert_workflow when flag enabled
-   - Where: assess.sh +110
-   - ```bash
-   if [[ "$SAVE_CHANGE_REQUESTS" == "true" ]]; then
-     WORKFLOW_ID=$(insert_workflow "$CHANGE_REQUEST")
-     echo "Created workflow #$WORKFLOW_ID"
-   fi
-   ```
-
-5. Add Database Migration Test DONE
-   - What: Ensure workflows table exists on startup
-   - Where: tests/test_db.sh
-   - ```bash
-   test_workflows_table_exists() {
-     local result=$(sqlite3 "$TEST_DB" ".tables workflows")
-     assert_equals "workflows" "$result" "Workflows table should exist"
+   create_snapshot() {
+     if [[ "${ENABLE_SNAPSHOTS:-1}" == "1" ]]; then
+       # Existing snapshot code
+     fi
    }
    ```
 
-6. Refactor DB Initialization DONE
-   - What: Move schema creation to separate function
-   - Where: lib/db.sh
+3. Update Report Template Test TODO
+   - What: Add test to verify snapshot section is removed when disabled
+   - Where: test/test_assess.sh +0
    - ```bash
-   init_db() {
-     sqlite3 "$DB_PATH" < lib/dbschema.sh
+   testReportWithoutSnapshot() {
+     export ENABLE_SNAPSHOTS=0
+     result=$(./assess.sh .)
+     assertNotContains "$result" "Snapshot Information"
+     unset ENABLE_SNAPSHOTS  
    }
    ```
 
-7. Add Workflow ID to Assessment Report DONE
-   - What: Include workflow ID in report header when available
-   - Where: templates/assessment.md
-   - ```markdown
-   ## Overview
-   - **Date:** {{date}}
-   - **Workflow ID:** {{workflow_id}}
-   - **Change Request:** {{change_request}}
+4. Update Report Template TODO
+   - What: Make snapshot section conditional on flag
+   - Where: assess.sh +134
+   - ```bash
+   $(if [[ "${ENABLE_SNAPSHOTS:-1}" == "1" ]]; then
+     echo "## Snapshot Information"
+     echo "- Snapshot manifest: \`.code_snapshot_manifest.txt\`"
+     [ -f ".code_snapshot_git.txt" ] && echo "- Git status: \`.code_snapshot_git.txt\`"
+   fi)
+   ```
+
+5. Default Snapshots Off TODO
+   - What: Set default to disabled in main script
+   - Where: assess.sh +1
+   - ```bash
+   export ENABLE_SNAPSHOTS=0
+   ```
+
+6. Remove Snapshot Code TODO
+   - What: Remove all snapshot related code once flag testing complete
+   - Where: assess.sh +53-78
+   - ```bash
+   # Delete create_snapshot function and related code
    ```

@@ -76,6 +76,14 @@ echo "test file" > "$TEST_DIR/test.txt"
 ./assess.sh "Test metrics" -c "$TEST_DIR" | grep "Total files:" && echo "PASS: Generated metrics" || echo "FAIL: Should generate metrics"
 rm -rf "$TEST_DIR"
 
+testSnapshotDisabled() {
+    export ENABLE_SNAPSHOTS=0
+    ./assess.sh .
+    assertFileNotExists ".code_snapshot_manifest.txt"
+    assertFileNotExists ".code_snapshot_git.txt"
+    unset ENABLE_SNAPSHOTS
+}
+
 # Clean up
 rm -rf "$TEST_DIR"
 echo "Cleaned up temporary test directory"
