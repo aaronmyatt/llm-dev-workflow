@@ -1,67 +1,87 @@
 # Assessment Report
 
 ## Overview
-- **Date:** 2025-02-25 20:31:42
+- **Date:** 2025-02-25 22:00:00
 - **Change Request:** 
-removes snapshot capabilities from project
+sequence
 - **Directory:** /Users/aaronmyatt/dev/llm-dev-workflow
 
 ## Metrics
 - === Codebase Metrics ===
 - Analyzing directory: /Users/aaronmyatt/dev/llm-dev-workflow
-- Total files:      101
-- Total lines:     2525
-
-## Snapshot Information
-- Snapshot manifest: `.code_snapshot_manifest.txt`
-- Git status: `.code_snapshot_git.txt`
+- Total files:      107
+- Total lines:     2532
 
 ## Scope
 ## Code Analysis
-Analysis of code sections relevant to: removes snapshot capabilities from project
+Analysis of code sections relevant to: sequence
 ```
-Based on the code review, here are the relevant sections for removing snapshot capabilities:
+Based on the provided code and the request for "sequence", here are the relevant sections:
 
-### assess.sh
-- assess.sh +53-78
-- Core snapshot creation functionality that needs to be removed
+### llmdev
+- llmdev +48-71
+- Defines the main sequence of workflow execution and script ordering
 ```bash
-create_snapshot() {
-    local dir=$1
-    local timestamp=$(date +%Y%m%d_%H%M%S)
-    local snapshot_dir=".code_snapshot"
+function start_workflow() {
+    # start a new iteration based on the produced assessment+plan 
+    # for the current <change-request>
 
-    echo "=== Creating Codebase Snapshot ==="
-    echo "=== Manifest ===" > "${snapshot_dir}_manifest.txt"
-
-    # Create git status if in a git repo
-    if [ -d "$dir/.git" ]; then
-        echo "Git Status:" >> "${snapshot_dir}_git.txt"
-        (cd "$dir" && git status >> "${snapshot_dir}_git.txt" 2>&1)
-        (cd "$dir" && git rev-parse HEAD >> "${snapshot_dir}_git.txt" 2>&1)
+    #Add error handling around script execution
+    if ! ./assess.sh "$@"; then
+        echo "Error during assessment phase"
+        exit 1
     fi
 
-    # Create list of files with hashes
-    echo "=== Files ===" >> "${snapshot_dir}_manifest.txt"
-    find "$dir" -type f -exec md5 {} \; >> "${snapshot_dir}_manifest.txt" 2>/dev/null || true
+    if ! ./plan.sh "$@"; then
+        echo "Error during planning phase"
+        exit 1
+    fi
 
-    echo "Snapshot created at: ${timestamp}"
+    if ! ./iterate.sh "$@"; then
+        echo "Error during iteration phase"
+        exit 1
+    fi
 }
 ```
 
-- assess.sh +134-135
-- Report template section referencing snapshot that should be removed
+### iterate.sh
+- iterate.sh +43-90
+- Controls the sequence of task execution and iteration flow
 ```bash
-## Snapshot Information
-- Snapshot manifest: \`.code_snapshot_manifest.txt\`
-$([ -f ".code_snapshot_git.txt" ] && echo "- Git status: \`.code_snapshot_git.txt\`")
+while has_remaining_tasks; do
+    if ! display_current_task; then
+        echo "All tasks completed!"
+        exit 0
+    fi
+
+    echo "Mark this task complete? (y/N | q: quit, d: diff, c: commit, e: edit, l: til): "
+    while true; do
+        read -n 1 confirm
+        case "$confirm" in
+            [Yy])
+                NEXT_TASK_NUM=$(grep "^[0-9]\." improvement_tasks.md | grep -v "DONE" | head -n 1 | cut -d'.' -f1)
+                sed -i "" "/^$NEXT_TASK_NUM\./s/TODO/DONE/g" improvement_tasks.md
+                echo "Task $NEXT_TASK_NUM marked as complete"
+                break
+                ;;
+            # Other cases...
+        esac
+    done
+done
 ```
 
-These sections represent the core snapshot functionality that should be removed. The removal process should:
-1. Delete the create_snapshot() function
-2. Remove the call to create_snapshot() in the main flow
-3. Remove the snapshot information section from the report template
-4. Clean up any remaining references to .code_snapshot files
+### plan.sh
+- plan.sh +36-44
+- Defines how tasks should be sequenced based on assessment
+```bash
+# Generate sequential task list based on the assessment
+echo "=== Generating Task List ==="
+TASKS_FILE="improvement_tasks.md"
 
-Note that this will not affect the core assessment functionality as snapshots were an auxiliary feature for tracking state.
+# Create task list using llm with assessment context
+cat "$ASSESSMENT_REPORT" | llm -m son "You are helping plan a sequence of small tasks for a single developer to implement the requested changes.
+# ... prompt continues
+```
+
+These sections highlight how the workflow sequences tasks and actions from initial assessment through completion, with error handling and state tracking throughout the process.
 ```

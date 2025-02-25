@@ -139,6 +139,7 @@ Questions to consider:
 - [ ] Create visualization options
 - [ ] Add export capabilities
 - [ ] Implement backup/restore
+- [ ] Allow tasks to be "skipped"
 
 Questions to consider:
 * What visualizations would be most helpful?

@@ -28,7 +28,7 @@ function start_workflow() {
     # start a new iteration based on the produced assessment+plan 
     # for the current <change-request>
 
-    # Add error handling around script execution
+    #Add error handling around script execution
     if ! ./assess.sh "$@"; then
         echo "Error during assessment phase"
         exit 1
@@ -44,9 +44,9 @@ function start_workflow() {
         exit 1
     fi
 
-     # optionally run adjustment and documentation suggestions
-     # ./adjust.sh "$@"
-     # ./document.sh "$@"
+    #  optionally run adjustment and documentation suggestions
+    #  ./adjust.sh "$@"
+    #  ./document.sh "$@"
 }
 
 # Parse command
@@ -76,7 +76,7 @@ case $command in
     *)
         if [[ -n "$command" ]]; then
             # Treat as change request
-            ./assess.sh "$command" "$@"
+            start_workflow $command "$@"
         else
             show_help
             exit 1
