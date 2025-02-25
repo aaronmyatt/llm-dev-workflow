@@ -1,120 +1,135 @@
 # Assessment Report
 
 ## Overview
-- **Date:** 2025-02-23 12:30:07
+- **Date:** 2025-02-25 15:46:48
 - **Change Request:** 
-propose additional test commands for assess.sh to extend assess.test.sh
+please create an sqlite3 instance in a globally shared directory when ./llmdev is run for the first time
 - **Directory:** /Users/aaronmyatt/Development/llm-workflow
 
 ## Metrics
 - === Codebase Metrics ===
 - Analyzing directory: /Users/aaronmyatt/Development/llm-workflow
-- Total files:        7
-- Total lines:      644
+- Total files:       65
+- Total lines:     2403
 
 ## Snapshot Information
 - Snapshot manifest: `.code_snapshot_manifest.txt`
-
+- Git status: `.code_snapshot_git.txt`
 
 ## Scope
-=== Generating Code Analysis ===
 ## Code Analysis
-Analysis of code sections relevant to: propose additional test commands for assess.sh to extend assess.test.sh
+Analysis of code sections relevant to: please create an sqlite3 instance in a globally shared directory when ./llmdev is run for the first time
 ```
-I'll analyze the code and suggest additional tests based on the current implementation:
+Based on the provided code and the request to create an SQLite3 instance in a global directory, here are the relevant sections:
 
-### assess.test.sh
-- tests/assess.test.sh:1-78
-- Current test suite provides basic coverage but can be extended
+### llmdev
+- llmdev +1-36
+- Main program structure and command parsing location where database initialization should be added
+```bash
+#!/usr/bin/env bash
+
+# Exit on error
+set -e
+
+function show_help() {
+    cat << EOF
+Usage: llmdev <change-request>|<command> [options]
+
+Commands:
+  <change-request>   Start a new workflow with the specified change request
+  assess, a          Reproduce assessment report
+  plan, p            Reproduce tasks
+  iterate, i         Iterate on current assessment/tasks
+  adjust, j          Reproduce adjustment suggestions
+  document, d        Reproduce documentation suggestions
+
+Options:
+  -h, --help       Show this help message
+EOF
+}
+
+function start_workflow() {
+    # start a new iteration based on the produced assessment+plan 
+    # for the current <change-request>
+
+    # Add error handling around script execution
+    if ! ./assess.sh "$@"; then
+        echo "Error during assessment phase"
+        exit 1
+    fi
+}
+```
 
 ### assess.sh
-- assess.sh:19-31
-- Dependency checking function that should be tested more thoroughly
-- assess.sh:66-89
-- Metrics generation function that needs more test coverage
-- assess.sh:91-111
-- Snapshot creation function that needs validation
-- assess.sh:118-140
-- Code analysis generation that needs testing
-
-Here are the proposed additional test commands to add to assess.test.sh:
-
+- assess.sh +19-31
+- Contains dependency checking function that should be modified to include sqlite3
 ```bash
-echo "Test 16: Test dependency checking with mock commands"
-# Create temporary mock commands
-TEST_DIR=$(mktemp -d)
-touch "$TEST_DIR/files-to-prompt" "$TEST_DIR/llm"
-chmod +x "$TEST_DIR/files-to-prompt" "$TEST_DIR/llm"
-PATH="$TEST_DIR:$PATH"
-./assess.sh "Test dependencies" -c . && echo "PASS: Found mock dependencies" || echo "FAIL: Should find mock dependencies"
-rm -rf "$TEST_DIR"
-echo
-
-echo "Test 17: Test metrics with multiple file types"
-TEST_DIR=$(mktemp -d)
-echo "js file" > "$TEST_DIR/test.js"
-echo "py file" > "$TEST_DIR/test.py"
-mkdir "$TEST_DIR/nested"
-echo "nested file" > "$TEST_DIR/nested/test.txt"
-./assess.sh "Test complex metrics" -c "$TEST_DIR" -e "*.js,*.py" | grep "Filtered files:" && echo "PASS: Generated filtered metrics" || echo "FAIL: Should generate filtered metrics"
-rm -rf "$TEST_DIR"
-echo
-
-echo "Test 18: Test git snapshot creation"
-TEST_DIR=$(mktemp -d)
-(cd "$TEST_DIR" && git init && touch test.txt && git add . && git commit -m "test commit")
-./assess.sh "Test git snapshot" -c "$TEST_DIR" && [[ -f ".code_snapshot_git.txt" ]] && echo "PASS: Created git snapshot" || echo "FAIL: Should create git snapshot"
-rm -rf "$TEST_DIR"
-echo
-
-echo "Test 19: Test code analysis generation"
-TEST_DIR=$(mktemp -d)
-echo "function test() { return true; }" > "$TEST_DIR/test.js"
-./assess.sh "Analyze test function" -c "$TEST_DIR" | grep "function test" && echo "PASS: Generated code analysis" || echo "FAIL: Should generate code analysis"
-rm -rf "$TEST_DIR"
-echo
-
-echo "Test 20: Test concurrent directory access"
-TEST_DIR=$(mktemp -d)
-touch "$TEST_DIR/test.txt"
-(
-  ./assess.sh "Test concurrent access" -c "$TEST_DIR" &
-  ./assess.sh "Test concurrent access" -c "$TEST_DIR" &
-  wait
-) && echo "PASS: Handled concurrent access" || echo "FAIL: Should handle concurrent access"
-rm -rf "$TEST_DIR"
-echo
-
-echo "Test 21: Test large file handling"
-TEST_DIR=$(mktemp -d)
-dd if=/dev/zero of="$TEST_DIR/large.txt" bs=1M count=10 2>/dev/null
-./assess.sh "Test large file" -c "$TEST_DIR" && echo "PASS: Handled large file" || echo "FAIL: Should handle large file"
-rm -rf "$TEST_DIR"
-echo
-
-echo "Test 22: Test special characters in paths"
-TEST_DIR=$(mktemp -d)
-mkdir "$TEST_DIR/test dir with spaces"
-touch "$TEST_DIR/test dir with spaces/test.txt"
-./assess.sh "Test special chars" -c "$TEST_DIR/test dir with spaces" && echo "PASS: Handled special characters in path" || echo "FAIL: Should handle special characters in path"
-rm -rf "$TEST_DIR"
-echo
+check_dependencies() {
+    local missing=0
+    for cmd in "$@"; do
+        if ! command -v "$cmd" &> /dev/null; then
+            echo "Error: '$cmd' command is not available"
+            echo "Please install it before running this script"
+            missing=1
+        fi
+    done
+    if [[ $missing -eq 1 ]]; then
+        exit 1
+    fi
+}
 ```
 
-These additional tests cover:
-1. Dependency checking with mock commands
-2. Complex metrics with multiple file types and nested directories
-3. Git snapshot creation and validation
-4. Code analysis generation
-5. Concurrent directory access
-6. Large file handling
-7. Special characters in paths
+To implement the SQLite3 database:
 
-Each test:
-- Creates a controlled test environment
-- Executes specific functionality
-- Validates the output
-- Cleans up after itself
+1. Add to llmdev main script, after the `set -e`:
+```bash
+# Global directory for llmdev data
+LLMDEV_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/llmdev"
+LLMDEV_DB="$LLMDEV_DIR/llmdev.db"
 
-This will provide better coverage of the script's functionality and help catch potential issues.
+# Create directory if it doesn't exist
+mkdir -p "$LLMDEV_DIR"
+
+# Initialize database if it doesn't exist
+if [ ! -f "$LLMDEV_DB" ]; then
+    sqlite3 "$LLMDEV_DB" <<EOF
+CREATE TABLE IF NOT EXISTS workflows (
+    id INTEGER PRIMARY KEY,
+    change_request TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    status TEXT DEFAULT 'active'
+);
+
+CREATE TABLE IF NOT EXISTS tasks (
+    id INTEGER PRIMARY KEY,
+    workflow_id INTEGER,
+    description TEXT,
+    status TEXT DEFAULT 'todo',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    completed_at DATETIME,
+    FOREIGN KEY(workflow_id) REFERENCES workflows(id)
+);
+
+CREATE TABLE IF NOT EXISTS metrics (
+    id INTEGER PRIMARY KEY,
+    workflow_id INTEGER,
+    total_files INTEGER,
+    total_lines INTEGER,
+    recorded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(workflow_id) REFERENCES workflows(id)
+);
+EOF
+fi
+```
+
+2. Add sqlite3 to dependency check in assess.sh:
+```bash
+check_dependencies "files-to-prompt" "llm" "sqlite3"
+```
+
+This will:
+- Create a standardized directory for llmdev data
+- Initialize SQLite3 database with tables for workflows, tasks, and metrics
+- Check for sqlite3 availability
+- Use XDG base directory specification for data location
 ```

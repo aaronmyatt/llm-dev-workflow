@@ -1,0 +1,33 @@
+Git Status:
+On branch main
+Your branch is ahead of 'origin/main' by 1 commit.
+  (use "git push" to publish your local commits)
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   .code_snapshot_manifest.txt
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.code_snapshot_git.txt
+
+no changes added to commit (use "git add" and/or "git commit -a")
+c9f5f0d608883946aafbaf7ca57aa033c474db22
+Git Status:
+On branch main
+Your branch is ahead of 'origin/main' by 1 commit.
+  (use "git push" to publish your local commits)
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   .code_snapshot_manifest.txt
+	modified:   assess.sh
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.code_snapshot_git.txt
+
+no changes added to commit (use "git add" and/or "git commit -a")
+c9f5f0d608883946aafbaf7ca57aa033c474db22

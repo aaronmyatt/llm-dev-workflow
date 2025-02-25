@@ -28,7 +28,7 @@ check_dependencies() {
     fi
 }
 
-check_dependencies "files-to-prompt" "llm"
+check_dependencies "files-to-prompt" "llm" "sqlite3"
 
 # Help function
 show_help() {
@@ -98,9 +98,9 @@ generate_code_analysis() {
     echo "## Code Analysis"
     echo "Analysis of code sections relevant to: $CHANGE_REQUEST"
     echo '```'
-    files-to-prompt "$dir" | llm -m son "Please analyze the provided code and list important sections relevant to the user provided request wrapped in ---:
+    files-to-prompt "$dir" | llm -m son 'Please analyze the provided code and list important sections relevant to the user provided request wrapped in ---:
     ---
-    $CHANGE_REQUEST
+    '"$CHANGE_REQUEST"'
     ---
     
     Please limit the output to and format as:
@@ -112,7 +112,7 @@ generate_code_analysis() {
     relevant code snippet
     ```
 
-    Focus on code that handles argument parsing, error checking, metrics generation and status reporting. Provide the tightest relevant line ranges possible."
+    Focus on code that handles argument parsing, error checking, metrics generation and status reporting. Provide the tightest relevant line ranges possible.'
     echo '```'
 }
 

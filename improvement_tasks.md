@@ -1,76 +1,125 @@
 ## Implementation Sequence
 
-1. Add Basic Dependency Testing DONE
-   - What: Implement test for checking dependencies with mock executables
-   - Where: tests/assess.test.sh
+1. Add SQLite3 Dependency Check DONE
+   - What: Add sqlite3 to dependency checking in assess.sh
+   - Where: assess.sh +20
    ```bash
-   echo "Test 16: Test dependency checking with mock commands"
-   TEST_DIR=$(mktemp -d)
-   touch "$TEST_DIR/files-to-prompt" "$TEST_DIR/llm"
-   chmod +x "$TEST_DIR/files-to-prompt" "$TEST_DIR/llm"
-   PATH="$TEST_DIR:$PATH"
-   ./assess.sh "Test dependencies" -c . && echo "PASS: Found mock dependencies" || echo "FAIL: Should find mock dependencies"
-   rm -rf "$TEST_DIR"
-   echo
+   check_dependencies "files-to-prompt" "llm" "sqlite3"
    ```
 
-2. Add Multi-filetype Metrics Test TODO
-   - What: Test metrics generation with multiple file types and nested directories
-   - Where: tests/assess.test.sh
+2. Create Global Directory Constants DONE
+   - What: Add constants for global directory and database paths
+   - Where: llmdev +4
    ```bash
-   echo "Test 17: Test metrics with multiple file types"
-   TEST_DIR=$(mktemp -d)
-   echo "js file" > "$TEST_DIR/test.js"
-   echo "py file" > "$TEST_DIR/test.py"
-   mkdir "$TEST_DIR/nested"
-   echo "nested file" > "$TEST_DIR/nested/test.txt"
-   ./assess.sh "Test complex metrics" -c "$TEST_DIR" -e "*.js,*.py" | grep "Filtered files:" && echo "PASS: Generated filtered metrics" || echo "FAIL: Should generate filtered metrics"
-   rm -rf "$TEST_DIR"
-   echo
+   # Global directory for llmdev data
+   LLMDEV_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/llmdev"
+   LLMDEV_DB="$LLMDEV_DIR/llmdev.db"
    ```
 
-3. Add Git Snapshot Test TODO
-   - What: Test git snapshot functionality with temporary repo
-   - Where: tests/assess.test.sh
+3. Add Directory Creation Logic DONE
+   - What: Create global directory if it doesn't exist
+   - Where: llmdev +7
    ```bash
-   echo "Test 18: Test git snapshot creation"
-   TEST_DIR=$(mktemp -d)
-   (cd "$TEST_DIR" && git init && touch test.txt && git add . && git commit -m "test commit")
-   ./assess.sh "Test git snapshot" -c "$TEST_DIR" && [[ -f ".code_snapshot_git.txt" ]] && echo "PASS: Created git snapshot" || echo "FAIL: Should create git snapshot"
-   rm -rf "$TEST_DIR"
-   echo
+   # Create directory if it doesn't exist
+   mkdir -p "$LLMDEV_DIR"
    ```
 
-4. Add Code Analysis Test TODO
-   - What: Test code analysis generation with sample function
-   - Where: tests/assess.test.sh
+4. Create Database Schema Function DONE
+   - What: Add function to define database schema creation SQL
+   - Where: New file: lib/db_schema.sh
    ```bash
-   echo "Test 19: Test code analysis generation"
-   TEST_DIR=$(mktemp -d)
-   echo "function test() { return true; }" > "$TEST_DIR/test.js"
-   ./assess.sh "Analyze test function" -c "$TEST_DIR" | grep "function test" && echo "PASS: Generated code analysis" || echo "FAIL: Should generate code analysis"
-   rm -rf "$TEST_DIR"
-   echo
+   create_schema() {
+       cat <<EOF
+    CREATE TABLE IF NOT EXISTS workflows (
+        id INTEGER PRIMARY KEY,
+        change_request TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        status TEXT DEFAULT 'active'
+    );
+
+    CREATE TABLE IF NOT EXISTS tasks (
+        id INTEGER PRIMARY KEY,
+        workflow_id INTEGER,
+        description TEXT,
+        status TEXT DEFAULT 'todo',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        completed_at DATETIME,
+        FOREIGN KEY(workflow_id) REFERENCES workflows(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS metrics (
+        id INTEGER PRIMARY KEY,
+        workflow_id INTEGER,
+        total_files INTEGER,
+        total_lines INTEGER,
+        recorded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(workflow_id) REFERENCES workflows(id)
+    );
+EOF
+}
    ```
 
-5. Add Path Edge Cases Tests TODO
-   - What: Add tests for special characters and large files
-   - Where: tests/assess.test.sh
+5. Add Database Initialization DONE
+   - What: Initialize database if it doesn't exist
+   - Where: llmdev +10
    ```bash
-   echo "Test 21: Test large file handling"
-   TEST_DIR=$(mktemp -d)
-   dd if=/dev/zero of="$TEST_DIR/large.txt" bs=1M count=10 2>/dev/null
-   ./assess.sh "Test large file" -c "$TEST_DIR" && echo "PASS: Handled large file" || echo "FAIL: Should handle large file"
-   rm -rf "$TEST_DIR"
-   echo
+   # Source schema creation function
+   . lib/db_schema.sh
 
-   echo "Test 22: Test special characters in paths"
-   TEST_DIR=$(mktemp -d)
-   mkdir "$TEST_DIR/test dir with spaces"
-   touch "$TEST_DIR/test dir with spaces/test.txt"
-   ./assess.sh "Test special chars" -c "$TEST_DIR/test dir with spaces" && echo "PASS: Handled special characters in path" || echo "FAIL: Should handle special characters in path"
-   rm -rf "$TEST_DIR"
-   echo
+   # Initialize database if it doesn't exist
+   if [ ! -f "$LLMDEV_DB" ]; then
+       sqlite3 "$LLMDEV_DB" "$(create_schema)"
+   fi
    ```
 
-Each task builds on the previous one, starting with basic dependency testing and progressing through more complex scenarios. They can be implemented and tested independently without affecting existing functionality.
+6. Add Simple Database Test DONE
+   - What: Create test to verify database creation and schema
+   - Where: New file: tests/test_db.sh
+   ```bash
+   #!/usr/bin/env bash
+   set -e
+
+   # Source the main script to get constants
+   . ./llmdev
+
+   # Test database creation
+   test_db_creation() {
+       rm -f "$LLMDEV_DB"
+       ./llmdev --help
+       if [ ! -f "$LLMDEV_DB" ]; then
+           echo "Database was not created"
+           exit 1
+       fi
+   }
+
+   # Test schema existence
+   test_schema() {
+       tables=$(sqlite3 "$LLMDEV_DB" ".tables")
+       for table in workflows tasks metrics; do
+           if [[ ! $tables =~ $table ]]; then
+               echo "Missing table: $table"
+               exit 1
+           fi
+       done
+   }
+
+   test_db_creation
+   test_schema
+   echo "Database tests passed"
+   ```
+
+7. Add Database Error Handling DONE
+   - What: Add error handling for database operations
+   - Where: llmdev +15
+   ```bash
+   init_database() {
+       if ! sqlite3 "$LLMDEV_DB" "$(create_schema)"; then
+           echo "Error: Failed to initialize database"
+           exit 1
+       fi
+   }
+
+   if [ ! -f "$LLMDEV_DB" ]; then
+       init_database
+   fi
+   ```

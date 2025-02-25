@@ -3,6 +3,24 @@
 # Exit on error
 set -e
 
+LLMDEV_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/llmdev"
+LLMDEV_DB="$LLMDEV_DIR/llmdev.db"
+
+mkdir -p "$LLMDEV_DIR"
+
+. lib/dbschema.sh
+
+init_database() {
+    if ! sqlite3 "$LLMDEV_DB" "$(create_schema)"; then
+        echo "Error: Failed to initialize database"
+        exit 1
+    fi
+}
+
+if [ ! -f "$LLMDEV_DB" ]; then
+    init_database
+fi
+
 function show_help() {
     cat << EOF
 Usage: llmdev <change-request>|<command> [options]
