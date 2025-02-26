@@ -169,6 +169,5 @@ REPORT='# Assessment Report
 '
 
 echo "$REPORT"
-echo "$REPORT" > "$REPORT_PATH"
 
 insert_assessment "$WORKFLOW_ID" "$REPORT"
