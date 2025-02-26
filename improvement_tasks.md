@@ -1,102 +1,93 @@
-Based on the request to analyze and enhance the sequence functionality in the codebase, I'll break this down into focused, incremental tasks that build upon each other while minimizing disruption to the existing workflow.
-
 ## Implementation Sequence
 
-1. Add Sequence Unit Tests DONE
-   - What: Create initial unit tests for workflow sequence validation
-   - Where: tests/test_workflow_sequence.sh +1
-   ```bash
-   #!/bin/bash
-   source ../llmdev
+1. Add assessment database test helper TODO
+   - What: Create test helper to setup/teardown test database and check assessment records
+   - Where: test/db_test.sh +0
+   - ```bash
+   #!/usr/bin/env bash
+   setup() {
+     export LLMDEV_DB=":memory:"
+     . lib/db.sh
+     init_database
+   }
    
-   test_workflow_sequence() {
-     # Test that scripts execute in correct order
-     local output=$(start_workflow "test")
-     assert_contains "$output" "assessment phase"
-     assert_contains "$output" "planning phase" 
-     assert_contains "$output" "iteration phase"
+   test_store_assessment() {
+     store_assessment 1 "test body"
+     result=$(latest_assessment 1)
+     assert_equals "test body" "$result"
    }
    ```
 
-2. Implement Sequence State Tracking  DONE
-   - What: Add state tracking to monitor workflow progress
-   - Where: llmdev +45
-   ```bash
-   WORKFLOW_STATE_FILE=".workflow_state"
-   
-   track_workflow_state() {
-     local phase=$1
-     echo "$phase" > "$WORKFLOW_STATE_FILE"
+2. Implement store_assessment function TODO
+   - What: Add function to store assessment report in database
+   - Where: lib/db.sh +25 
+   - ```bash
+   store_assessment() {
+     local workflow_id="$1"
+     local body="$2"
+     db_operation "INSERT INTO assessments (workflow_id, body) VALUES ($workflow_id, '$body')"
    }
    ```
 
-3. Enhance Error Recovery DONE
-   - What: Add ability to resume workflow from last successful phase
-   - Where: llmdev +60
-   ```bash 
-   resume_workflow() {
-     local last_phase=$(cat "$WORKFLOW_STATE_FILE" 2>/dev/null)
-     case "$last_phase" in
-       "assessment") start_from_planning "$@" ;;
-       "planning") start_from_iteration "$@" ;;
-       *) start_workflow "$@" ;;
-     esac
+3. Add DB_STORAGE environment flag TODO
+   - What: Add flag to toggle between file and DB storage
+   - Where: lib/config.sh +0
+   - ```bash 
+   # Default to file storage
+   export DB_STORAGE="${DB_STORAGE:-0}"
+   ```
+
+4. Update assess.sh to optionally store in DB TODO
+   - What: Store assessment in DB when flag enabled while maintaining file output
+   - Where: assess.sh +45
+   - ```bash
+   if [[ "$DB_STORAGE" == "1" ]]; then
+     store_assessment "$WORKFLOW_ID" "$assessment"
+   fi
+   echo "$assessment" > "$ASSESSMENT_REPORT"
+   ```
+
+5. Add read_assessment database function TODO
+   - What: Create function to read assessment from DB
+   - Where: lib/db.sh +32
+   - ```bash
+   read_assessment() {
+     local workflow_id="$1"
+     latest_assessment "$workflow_id"
    }
    ```
 
-4. Add Phase Validation DONE
-   - What: Validate prerequisites before each phase
-   - Where: llmdev +80
-   ```bash
-   validate_phase() {
-     local phase=$1
-     case "$phase" in
-       "planning")
-         [[ -f "assessment_report.md" ]] || return 1
-         ;;
-       "iteration") 
-         [[ -f "improvement_tasks.md" ]] || return 1
-         ;;
-     esac
-     return 0
-   }
+6. Update plan.sh to read from DB TODO
+   - What: Use DB storage when flag enabled
+   - Where: plan.sh +13
+   - ```bash
+   if [[ "$DB_STORAGE" == "1" ]]; then
+     assessment=$(read_assessment "$WORKFLOW_ID")
+   else
+     assessment=$(cat "$ASSESSMENT_REPORT")
+   fi
    ```
 
-5. Implement Progress Reporting DONE
-   - What: Add structured progress output for workflow phases
-   - Where: llmdev +95
-   ```bash
-   report_progress() {
-     local phase=$1
-     local status=$2
-     printf "\n=== %s Phase: %s ===\n" \
-       "$(echo $phase | tr '[:lower:]' '[:upper:]')" \
-       "$status"
-   }
+7. Update iterate.sh to read from DB TODO
+   - What: Use DB storage when flag enabled
+   - Where: iterate.sh +12
+   - ```bash
+   if [[ "$DB_STORAGE" == "1" ]]; then
+     assessment=$(read_assessment "$WORKFLOW_ID")
+     if [[ -z "$assessment" ]]; then
+       echo "Error: No assessment found for workflow $WORKFLOW_ID"
+       exit 1
+     fi
+   else
+     # Existing file check code
+   fi
    ```
 
-6. Refactor Main Sequence Flow DONE
-   - What: Refactor start_workflow with new features
-   - Where: llmdev +48
-   ```bash
-   start_workflow() {
-     report_progress "workflow" "started"
-     
-     for phase in assessment planning iteration; do
-       report_progress "$phase" "starting"
-       validate_phase "$phase" || {
-         echo "Error: Phase prerequisites not met"
-         exit 1
-       }
-       
-       track_workflow_state "$phase"
-       if ! "./${phase}.sh" "$@"; then
-         report_progress "$phase" "failed"
-         exit 1
-       fi
-       report_progress "$phase" "completed"
-     done
-   }
+8. Update documentation TODO
+   - What: Document DB storage option and migration steps
+   - Where: README.md +50
+   - ```markdown
+   ## Database Storage
+   Set DB_STORAGE=1 to store assessments in SQLite database instead of files.
+   This is the recommended approach for new installations.
    ```
-
-The sequence starts with tests, adds core functionality incrementally, and concludes with a clean refactor that brings everything together. Each change is isolated and can be toggled/controlled through the workflow state tracking.

@@ -12,6 +12,14 @@ create_schema() {
        status TEXT DEFAULT 'active'
    );
 
+   CREATE TABLE IF NOT EXISTS assessments (
+       id INTEGER PRIMARY KEY,
+       workflow_id INTEGER,
+       body TEXT,
+       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+       FOREIGN KEY(workflow_id) REFERENCES workflows(id)
+   );
+
    CREATE TABLE IF NOT EXISTS tasks (
        id INTEGER PRIMARY KEY,
        workflow_id INTEGER,
@@ -36,6 +44,42 @@ EOF
 insert_workflow() {
     local change_request="$1"
     sqlite3 "$LLMDEV_DB" "INSERT INTO workflows (change_request) VALUES ('$change_request') RETURNING id;"
+}
+
+insert_assessment() {
+    local workflow_id="$1"
+    local assessment_report="$2"
+    db_operation "INSERT INTO assessments (workflow_id, body) VALUES ('$workflow_id', '$assessment_report');"
+}
+
+latest_assessment() {
+    local workflow_id="$1"
+    db_operation "SELECT body FROM assessments ORDER BY created_at DESC LIMIT 1"
+}
+
+insert_metrics() {
+    local workflow_id=$1
+    local total_files=$2
+    local total_lines=$3
+
+    sqlite3 "$LLMDEV_DB" "INSERT INTO metrics
+        (workflow_id, total_files, total_lines)
+        VALUES ($workflow_id, $total_files, $total_lines);"
+}
+
+db_operation() {
+    if ! sqlite3 "$LLMDEV_DB" "$1"; then
+    echo "Database operation failed: $1" >&2
+    return 1
+    fi
+}
+
+get_assessments() {
+    local workflow_id=$1
+    sqlite3 "$LLMDEV_DB" "SELECT w.change_request, m.*
+        FROM metrics m
+        JOIN workflows w ON w.id = m.workflow_id
+        WHERE workflow_id = $workflow_id;"
 }
 
 init_database() {

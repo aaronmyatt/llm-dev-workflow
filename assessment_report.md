@@ -1,87 +1,93 @@
 # Assessment Report
 
 ## Overview
-- **Date:** 2025-02-25 22:00:00
+- **Date:** 2025-02-26 10:25:32
 - **Change Request:** 
-sequence
-- **Directory:** /Users/aaronmyatt/dev/llm-dev-workflow
+read assessment report from database rather than reading from the filesystem
+- **Directory:** $CODEBASE_PATH
 
 ## Metrics
-- === Codebase Metrics ===
-- Analyzing directory: /Users/aaronmyatt/dev/llm-dev-workflow
-- Total files:      107
-- Total lines:     2532
+- Analyzing directory: /Users/aaronmyatt/Development/llm-workflow
+- Total files: 118
+- Total lines: 2727
 
 ## Scope
-## Code Analysis
-Analysis of code sections relevant to: sequence
 ```
-Based on the provided code and the request for "sequence", here are the relevant sections:
+Based on the provided code, here are the key sections that need to be modified to implement database-based assessment report reading:
+
+### lib/db.sh
+- lib/db.sh +0
+- Contains database operations and schema definition
+```bash
+LLMDEV_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/llmdev"
+LLMDEV_DB="$LLMDEV_DIR/llmdev.db"
+
+# Existing table definitions include assessments table
+CREATE TABLE IF NOT EXISTS assessments (
+   id INTEGER PRIMARY KEY,
+   workflow_id INTEGER,
+   body TEXT,
+   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+   FOREIGN KEY(workflow_id) REFERENCES workflows(id)
+);
+
+# Existing function to get assessment
+latest_assessment() {
+    local workflow_id="$1"
+    db_operation "select body from assessments where workflow_id = $workflow_id"
+}
+```
+
+### plan.sh
+- plan.sh +13
+- Currently reads assessment from filesystem, needs to be updated to read from database
+```bash
+ASSESSMENT_REPORT="assessment_report.md"
+
+# Check if assessment report exists
+if [[ ! -f "$ASSESSMENT_REPORT" ]]; then
+    echo "Error: Assessment report not found: $ASSESSMENT_REPORT"
+    echo "Please run assess.sh first to generate the assessment"
+    exit 1
+fi
+
+# Read and parse the assessment report
+echo "Reading assessment data from $ASSESSMENT_REPORT..."
+```
 
 ### llmdev
-- llmdev +48-71
-- Defines the main sequence of workflow execution and script ordering
+- llmdev +0
+- Main script that orchestrates workflow and includes database initialization
 ```bash
+#!/usr/bin/env bash
+
+# Exit on error
+set -e
+
+. lib/db.sh
+
+init_database
+
 function start_workflow() {
-    # start a new iteration based on the produced assessment+plan 
-    # for the current <change-request>
-
-    #Add error handling around script execution
-    if ! ./assess.sh "$@"; then
+    if ! ./assess.sh "$1"; then
         echo "Error during assessment phase"
-        exit 1
-    fi
-
-    if ! ./plan.sh "$@"; then
-        echo "Error during planning phase"
-        exit 1
-    fi
-
-    if ! ./iterate.sh "$@"; then
-        echo "Error during iteration phase"
         exit 1
     fi
 }
 ```
 
 ### iterate.sh
-- iterate.sh +43-90
-- Controls the sequence of task execution and iteration flow
+- iterate.sh +12
+- Another script that needs to read assessment report from database instead of file
 ```bash
-while has_remaining_tasks; do
-    if ! display_current_task; then
-        echo "All tasks completed!"
-        exit 0
-    fi
-
-    echo "Mark this task complete? (y/N | q: quit, d: diff, c: commit, e: edit, l: til): "
-    while true; do
-        read -n 1 confirm
-        case "$confirm" in
-            [Yy])
-                NEXT_TASK_NUM=$(grep "^[0-9]\." improvement_tasks.md | grep -v "DONE" | head -n 1 | cut -d'.' -f1)
-                sed -i "" "/^$NEXT_TASK_NUM\./s/TODO/DONE/g" improvement_tasks.md
-                echo "Task $NEXT_TASK_NUM marked as complete"
-                break
-                ;;
-            # Other cases...
-        esac
-    done
-done
+# Check for assessment report
+if [[ ! -f "assessment_report.md" ]]; then
+    echo "Error: assessment_report.md not found"
+    echo "Please run assess.sh first"
+    exit 1
+fi
 ```
 
-### plan.sh
-- plan.sh +36-44
-- Defines how tasks should be sequenced based on assessment
-```bash
-# Generate sequential task list based on the assessment
-echo "=== Generating Task List ==="
-TASKS_FILE="improvement_tasks.md"
-
-# Create task list using llm with assessment context
-cat "$ASSESSMENT_REPORT" | llm -m son "You are helping plan a sequence of small tasks for a single developer to implement the requested changes.
-# ... prompt continues
+The code currently relies heavily on filesystem-based storage and reading of the assessment report. The database schema and basic functions already exist, but the application needs to be modified to use these database functions instead of direct file operations.
 ```
 
-These sections highlight how the workflow sequences tasks and actions from initial assessment through completion, with error handling and state tracking throughout the process.
-```

@@ -8,12 +8,23 @@
 # Exit on error
 set -e
 
-REPORT_FILE="assessment_report.md"
+
+total_files() { 
+    echo $(find "$1" -type f | wc -l) 
+}
+total_lines() { 
+    echo $(find "$1" -type f -exec cat {} + | wc -l) 
+}
+
+REPORT=''
+REPORT_PATH="assessment_report.md"
 CHANGE_REQUEST=""
 CODEBASE_PATH="."
 EXTENSIONS=""
 timestamp=$(date "+%Y-%m-%d %H:%M:%S")
-SAVE_CHANGE_REQUESTS=${SAVE_CHANGE_REQUESTS:-true}
+WORKFLOW_ID=0
+TOTAL_FILES=0
+TOTAL_LINES=0
 
 . lib/db.sh
 
@@ -47,37 +58,28 @@ show_help() {
     echo
 }
 
-generate_metrics() {
+echo_metrics() {
     local dir=$1
-    echo "=== Codebase Metrics ==="
-    echo "Analyzing directory: $dir"
-
-    # Total number of files
-    local total_files=$(find "$dir" -type f | wc -l)
-    echo "Total files: $total_files"
-
-    # Total lines of code
-    local total_lines=$(find "$dir" -type f -exec cat {} + | wc -l)
-    echo "Total lines: $total_lines"
-
+    local total_files=$2
+    local total_lines=$3
+    echo 'Analyzing directory: '"$dir"'
+Total files: '"$total_files"'
+Total lines: '"$total_lines"''
     # If extensions were specified, show filtered metrics
-    if [[ -n "$EXTENSIONS" ]]; then
-        echo "=== Filtered by extension(s): $EXTENSIONS ==="
-        local filtered_files=$(find "$dir" -type f -name "$EXTENSIONS" | wc -l)
-        local filtered_lines=$(find "$dir" -type f -name "$EXTENSIONS" -exec cat {} + | wc -l)
-        echo "Filtered files: $filtered_files"
-        echo "Filtered lines: $filtered_lines"
-    fi
+    # if [[ -n "$EXTENSIONS" ]]; then
+    #     echo "=== Filtered by extension(s): $EXTENSIONS ==="
+    #     local filtered_files=$(find "$dir" -type f -name "$EXTENSIONS" | wc -l)
+    #     local filtered_lines=$(find "$dir" -type f -name "$EXTENSIONS" -exec cat {} + | wc -l)
+    #     echo "Filtered files: $filtered_files"
+    #     echo "Filtered lines: $filtered_lines"
+    # fi
 }
 
 generate_code_analysis() {
     local dir=$1
     local CHANGE_REQUEST=$2
-    local REPORT_FILE=$3
 
     # Create the analysis using files-to-prompt and llm
-    echo "## Code Analysis"
-    echo "Analysis of code sections relevant to: $CHANGE_REQUEST"
     echo '```'
     files-to-prompt "$dir" | llm -m son 'Please analyze the provided code and list important sections relevant to the user provided request wrapped in ---:
     ---
@@ -126,6 +128,9 @@ if [[ ! -d "$CODEBASE_PATH" ]]; then
     exit 1
 fi
 
+TOTAL_FILES=$(total_files "$CODEBASE_PATH")
+TOTAL_LINES=$(total_lines "$CODEBASE_PATH")
+
 # Add validation for required arguments
 if [[ -z "$CHANGE_REQUEST" ]]; then
     echo "Error: Change request is required"
@@ -138,32 +143,32 @@ if [[ -n "$CHANGE_REQUEST" ]]; then
     echo "Change request: $CHANGE_REQUEST"
 fi
 
-if [[ "$SAVE_CHANGE_REQUESTS" == "true" ]]; then
-    WORKFLOW_ID=$(insert_workflow "$CHANGE_REQUEST")
-    echo "Created workflow #$WORKFLOW_ID"
-fi
+WORKFLOW_ID=$(insert_workflow "$CHANGE_REQUEST")
 
 # Convert to absolute path
 CODEBASE_PATH=$(cd "$CODEBASE_PATH" && pwd)
 
 echo "Starting assessment of codebase at: $CODEBASE_PATH"
-generate_metrics "$CODEBASE_PATH"
+echo_metrics "$CODEBASE_PATH" "$TOTAL_FILES" "$TOTAL_LINES"
+insert_metrics "$WORKFLOW_ID" "$TOTAL_FILES" "$TOTAL_LINES"
 
 # Create markdown report
-    cat << EOF > "$REPORT_FILE"
-# Assessment Report
+REPORT='# Assessment Report
 
 ## Overview
-- **Date:** $timestamp
+- **Date:** '"$timestamp"'
 - **Change Request:** 
-$CHANGE_REQUEST
-- **Directory:** $CODEBASE_PATH
+'"$CHANGE_REQUEST"'
+- **Directory:** '"$CODEBASE_PATH"'
 
 ## Metrics
-$(generate_metrics "$CODEBASE_PATH" | sed 's/^/- /')
+'"$(echo_metrics "$CODEBASE_PATH" "$TOTAL_FILES" "$TOTAL_LINES" | sed 's/^/- /')"'
 
 ## Scope
-$(generate_code_analysis "$CODEBASE_PATH" "$CHANGE_REQUEST" "$REPORT_FILE")
-EOF
+'"$(generate_code_analysis "$CODEBASE_PATH" "$CHANGE_REQUEST")"'
+'
 
-echo "Assessment report generated: assessment_report.md"
+echo "$REPORT"
+echo "$REPORT" > "$REPORT_PATH"
+
+insert_assessment "$WORKFLOW_ID" "$REPORT"

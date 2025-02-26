@@ -8,23 +8,26 @@
 # Exit on error
 set -e
 
-ASSESSMENT_REPORT="assessment_report.md"
+. ./lib/db.sh
+
+ASSESSMENT_REPORT=$(latest_assessment)
 
 # Check if assessment report exists
-if [[ ! -f "$ASSESSMENT_REPORT" ]]; then
+if [[ -z "$ASSESSMENT_REPORT" ]]; then
     echo "Error: Assessment report not found: $ASSESSMENT_REPORT"
     echo "Please run assess.sh first to generate the assessment"
     exit 1
 fi
 
 # Read and parse the assessment report
-echo "Reading assessment data from $ASSESSMENT_REPORT..."
+echo "Reading assessment data from db..."
 
+TASKS_FILE="improvement_tasks.md"
 # Extract key information from the assessment report
-CHANGE_REQUEST=$(sed -n '/Change Request:/,/Directory:/p' "$ASSESSMENT_REPORT" | grep -v "Change Request:" | grep -v "Directory:" | tr -d '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-DIRECTORY=$(grep "Directory:" "$ASSESSMENT_REPORT" | cut -d':' -f2- | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-METRICS=$(sed -n '/## Metrics/,/## Snapshot/p' "$ASSESSMENT_REPORT")
-SCOPE=$(sed -n '/## Scope/,//p' "$ASSESSMENT_REPORT")
+CHANGE_REQUEST=$(echo "$ASSESSMENT_REPORT" | sed -n '/Change Request:/,/Directory:/p'| grep -v "Change Request:" | grep -v "Directory:" | tr -d '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+DIRECTORY=$(echo "$ASSESSMENT_REPORT" | grep "Directory:" | cut -d':' -f2- | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+METRICS=$(echo "$ASSESSMENT_REPORT" | sed -n '/## Metrics/,/## Snapshot/p')
+SCOPE=$(echo "$ASSESSMENT_REPORT" | sed -n '/## Scope/,//p')
 
 # Display extracted information
 echo "=== Assessment Summary ==="
@@ -39,10 +42,9 @@ echo "$SCOPE"
 
 # Generate sequential task list based on the assessment
 echo "=== Generating Task List ==="
-TASKS_FILE="improvement_tasks.md"
 
 # Create task list using llm with assessment context
-cat "$ASSESSMENT_REPORT" | llm -m son "You are helping plan a sequence of small tasks for a single developer to implement the requested changes.
+echo "$ASSESSMENT_REPORT" | llm -m son 'You are helping plan a sequence of small tasks for a single developer to implement the requested changes.
 
 Review the assessment report and break down the work into a linear sequence of small tasks that:
 - Should follow a red,green,refactor sequence, starting with a minimal failing unit test
@@ -61,11 +63,11 @@ Please limit the output to and format as:
 1. Task name
    - What:  Brief description of the specific change
    - Where: filename \+LINENUMBER
-   - \`\`\`
+   - ```
    relevant or improved code from the assessment_report
-   \`\`\`
+   ```
 
-Each task should be concrete and actionable. The sequence should flow naturally from start to finish." > "$TASKS_FILE"
+Each task should be concrete and actionable. The sequence should flow naturally from start to finish.' > "$TASKS_FILE"
 
 sed -i "" '/[0-9]\./s/$/ TODO/g' $TASKS_FILE
 
