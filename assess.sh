@@ -80,7 +80,6 @@ generate_code_analysis() {
     local CHANGE_REQUEST=$2
 
     # Create the analysis using files-to-prompt and llm
-    echo '```'
     files-to-prompt "$dir" | llm -m son 'Please analyze the provided code and list important sections relevant to the user provided request wrapped in ---:
     ---
     '"$CHANGE_REQUEST"'
@@ -96,7 +95,6 @@ generate_code_analysis() {
     ```
 
     Focus on code that handles argument parsing, error checking, metrics generation and status reporting. Provide the tightest relevant line ranges possible.'
-    echo '```'
 }
 
 while [[ $# -gt 0 ]]; do
@@ -165,7 +163,7 @@ REPORT='# Assessment Report
 '"$(echo_metrics "$CODEBASE_PATH" "$TOTAL_FILES" "$TOTAL_LINES" | sed 's/^/- /')"'
 
 ## Scope
-'"$(generate_code_analysis "$CODEBASE_PATH" "$CHANGE_REQUEST")"'
+'"$(generate_code_analysis "$CODEBASE_PATH" "$CHANGE_REQUEST" | tr "'" '"')"'
 '
 
 echo "$REPORT"
