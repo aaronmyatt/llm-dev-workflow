@@ -70,6 +70,21 @@ test_read_assessment() {
     assert_equals "$test_assessment" "$result"
 }
 
+test_store_tasks_in_db() {
+    # Setup test workflow
+    workflow_id=$(create_workflow "Test workflow")
+    
+    # Test data
+    tasks="1. First task TODO\n2. Second task TODO" TODO
+    
+    # Call function
+    store_tasks_in_db "$workflow_id" "$tasks"
+    
+    # Verify tasks were stored
+    count=$(sqlite3 "$DATABASE" "SELECT COUNT(*) FROM tasks WHERE workflow_id = $workflow_id")
+    assert_equals "2" "$count" "Should store correct number of tasks"
+}
+
 test_db_creation
 test_schema
 echo "Database tests passed"

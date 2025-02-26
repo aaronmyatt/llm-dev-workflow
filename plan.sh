@@ -11,6 +11,7 @@ set -e
 . ./lib/db.sh
 
 ASSESSMENT_REPORT=$(latest_assessment)
+WORKFLOW_ID=$(latest_assessment 'workflow_id')
 
 # Check if assessment report exists
 if [[ -z "$ASSESSMENT_REPORT" ]]; then
@@ -23,6 +24,7 @@ fi
 echo "Reading assessment data from db..."
 
 TASKS_FILE="improvement_tasks.md"
+WORKPLAN=""
 # Extract key information from the assessment report
 CHANGE_REQUEST=$(echo "$ASSESSMENT_REPORT" | sed -n '/Change Request:/,/Directory:/p'| grep -v "Change Request:" | grep -v "Directory:" | tr -d '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
 DIRECTORY=$(echo "$ASSESSMENT_REPORT" | grep "Directory:" | cut -d':' -f2- | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
@@ -43,8 +45,9 @@ echo "$SCOPE"
 # Generate sequential task list based on the assessment
 echo "=== Generating Task List ==="
 
-# Create task list using llm with assessment context
-echo "$ASSESSMENT_REPORT" | llm -m son 'You are helping plan a sequence of small tasks for a single developer to implement the requested changes.
+Create task list using llm with assessment context
+WORKPLAN=$(echo "$ASSESSMENT_REPORT" |
+llm -m son 'You are helping plan a sequence of small tasks for a single developer to implement the requested changes.
 
 Review the assessment report and break down the work into a linear sequence of small tasks that:
 - Should follow a red,green,refactor sequence, starting with a minimal failing unit test
@@ -67,8 +70,12 @@ Please limit the output to and format as:
    relevant or improved code from the assessment_report
    ```
 
-Each task should be concrete and actionable. The sequence should flow naturally from start to finish.' > "$TASKS_FILE"
+Each task should be concrete and actionable. The sequence should flow naturally from start to finish.' | 
+sed -i "" '/[0-9]\./s/$/ TODO/g' |
+tr "'" '"')
 
-sed -i "" '/[0-9]\./s/$/ TODO/g' $TASKS_FILE
+echo "$WORKPLAN" > "$TASKS_FILE"
 
 echo "Task sequence saved to: $TASKS_FILE"
+
+insert_workplan "$WORKFLOW_ID" "$WORKPLAN"
