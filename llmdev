@@ -29,17 +29,17 @@ function start_workflow() {
     # for the current <change-request>
 
     #Add error handling around script execution
-    if ! ./assess.sh "$@"; then
+    if ! ./assess.sh "$1"; then
         echo "Error during assessment phase"
         exit 1
     fi
 
-    if ! ./plan.sh "$@"; then
+    if ! ./plan.sh $1; then
         echo "Error during planning phase"
         exit 1
     fi
 
-    if ! ./iterate.sh "$@"; then
+    if ! ./iterate.sh $1; then
         echo "Error during iteration phase"
         exit 1
     fi
@@ -76,7 +76,7 @@ case $command in
     *)
         if [[ -n "$command" ]]; then
             # Treat as change request
-            start_workflow $command "$@"
+            start_workflow "$command"
         else
             show_help
             exit 1
