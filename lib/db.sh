@@ -68,7 +68,23 @@ insert_assessment() {
 
 latest_assessment() {
     local column=${1:-'body'}
-    db_operation "SELECT $column FROM assessments ORDER BY created_at DESC LIMIT 1"
+    latest_record 'assessment' "$column"
+}
+
+latest_workplan() {
+    local column=${1:-'body'}
+    latest_record 'workplan' "$column"
+}
+
+latest_record() {
+    local table=${1:-'assessment'}
+    local column=${2:-'body'}
+    db_operation "SELECT $column FROM $table ORDER BY created_at DESC LIMIT 1"
+}
+
+latest_workflow(){
+    local column=${1:-'body'}
+    db_operation "select $column from workflows w left join assessments a on a.workflow_id = w.id left join workplan wp on wp.workflow_id = w.id ORDER BY w.created_at DESC LIMIT 1;"
 }
 
 insert_metrics() {
