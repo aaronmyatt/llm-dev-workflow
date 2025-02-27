@@ -80,21 +80,20 @@ generate_code_analysis() {
     local CHANGE_REQUEST=$2
 
     # Create the analysis using files-to-prompt and llm
-    files-to-prompt "$dir" | llm -m son 'Please analyze the provided code and list important sections relevant to the user provided request wrapped in ---:
+    files-to-prompt "$dir" | llm -m son 'Please analyze the provided code and list and describe important sections relevant to the change request wrapped in ---:
+    
     ---
     '"$CHANGE_REQUEST"'
     ---
     
-    Please limit the output to and format as:
+    Provide the tightest relevant line ranges possible. Please limit the output to and format as:
 
     ### filename
     - filename \+LINENUMBER
     - Why this section matters
     ```
     relevant code snippet
-    ```
-
-    Focus on code that handles argument parsing, error checking, metrics generation and status reporting. Provide the tightest relevant line ranges possible.'
+    ```'
 }
 
 while [[ $# -gt 0 ]]; do

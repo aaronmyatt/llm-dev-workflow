@@ -12,6 +12,7 @@ set -e
 
 ASSESSMENT_REPORT=$(latest_assessment)
 WORKFLOW_ID=$(latest_workflow 'w.id')
+CHANGE_REQUEST=$(latest_workflow 'w.change_request')
 
 # Check if assessment report exists
 if [[ -z "$ASSESSMENT_REPORT" ]]; then
@@ -46,20 +47,21 @@ echo "$SCOPE"
 echo "=== Generating Task List ==="
 
 # Create task list using llm with assessment context
-WORKPLAN=$(echo "$ASSESSMENT_REPORT" | 
-llm -m son 'You are helping plan a sequence of small tasks for a single developer to implement the requested changes.
+WORKPLAN=$(llm -m son 'You are helping a software developer plan their work. Please read the assessment report below wrapped in: ===
 
-Review the assessment report and break down the work into a linear sequence of small tasks that:
-- Should follow a red,green,refactor sequence, starting with a minimal failing unit test
+===
+'"$ASSESSMENT_REPORT"'
+===
+
+Please propose a sequence of small tasks for a software developer to implement the following change request: '"$CHANGE_REQUEST"'.
+
+Review the assessment report provided and break down the work into a small set of tasks that:
+- Make the smallest possible change in each task
 - Build upon each other logically
-- Include specific files/areas to modify
-- Should minimally affect the existing code, please rely on techniques like:
-    - environment variable flags to toggle new code
-    - separate single function modules/files that introduce the change
-    - code generation
-    - or, as a last resort, duplicate files with the changes introduced
+- Focus on small, composite, functional changes
+- Aim to build out a library of reusable, composable functions
 
-Please limit the output to and format as:
+Please include specific files/areas to modify, limit the output to and format as:
 
 ## Implementation Sequence
 
@@ -68,9 +70,7 @@ Please limit the output to and format as:
    - Where: filename \+LINENUMBER
    - ```
    relevant or improved code from the assessment_report
-   ```
-
-Each task should be concrete and actionable. The sequence should flow naturally from start to finish.' | 
+   ```' | 
 sed '/[0-9]\./s/$/ TODO/g' | 
 tr "'" '"')
 
