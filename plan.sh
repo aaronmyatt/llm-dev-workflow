@@ -11,7 +11,7 @@ set -e
 . ./lib/db.sh
 
 ASSESSMENT_REPORT=$(latest_assessment)
-WORKFLOW_ID=$(latest_assessment 'workflow_id')
+WORKFLOW_ID=$(latest_workflow 'w.id')
 
 # Check if assessment report exists
 if [[ -z "$ASSESSMENT_REPORT" ]]; then
@@ -45,8 +45,8 @@ echo "$SCOPE"
 # Generate sequential task list based on the assessment
 echo "=== Generating Task List ==="
 
-Create task list using llm with assessment context
-WORKPLAN=$(echo "$ASSESSMENT_REPORT" |
+# Create task list using llm with assessment context
+WORKPLAN=$(echo "$ASSESSMENT_REPORT" | 
 llm -m son 'You are helping plan a sequence of small tasks for a single developer to implement the requested changes.
 
 Review the assessment report and break down the work into a linear sequence of small tasks that:
@@ -71,10 +71,8 @@ Please limit the output to and format as:
    ```
 
 Each task should be concrete and actionable. The sequence should flow naturally from start to finish.' | 
-sed -i "" '/[0-9]\./s/$/ TODO/g' |
+sed '/[0-9]\./s/$/ TODO/g' | 
 tr "'" '"')
-
-echo "$WORKPLAN" > "$TASKS_FILE"
 
 echo "Task sequence saved to: $TASKS_FILE"
 
