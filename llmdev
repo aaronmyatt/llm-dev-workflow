@@ -20,16 +20,55 @@ Commands:
   document, d        Reproduce documentation suggestions
 
 Options:
+  -c, --context    Specify context directory for assessment
   -h, --help       Show this help message
 EOF
 }
+
+parse_context() {
+    local context=""
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            -c|--context)
+                shift
+                context="$1"
+                shift
+                ;;
+            *)
+                break
+                ;;
+        esac
+    done
+    echo "$context"
+}
+
+parse_extensions() {
+    local extensions=""
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            -e|--extensions)
+                shift
+                extensions="$1"
+                shift
+                ;;
+            *)
+                break
+                ;;
+        esac
+    done
+    echo "$extensions"
+}
+
 
 function start_workflow() {
     # start a new iteration based on the produced assessment+plan 
     # for the current <change-request>
 
+    # local context=$(parse_context "$@")
+    # local change_request="${!#}" # get last argument
     #Add error handling around script execution
-    if ! ./assess.sh "$1"; then
+
+    if ! ./assess.sh "$@"; then
         echo "Error during assessment phase"
         exit 1
     fi
@@ -49,37 +88,42 @@ function start_workflow() {
     #  ./document.sh "$@"
 }
 
-# Parse command
-command=$1
-shift || true
+if [[ -n "$1" ]]; then
+    # Treat as change request
+    start_workflow "$@"
+else
+    show_help
+    exit 1
+fi
 
-case $command in
-    help|-h|--help)
-        show_help
-        exit 0
-        ;;
-    assess|a)
-        ./assess.sh "$@"
-        ;;
-    plan|p)
-        ./plan.sh "$@"
-        ;;
-    iterate|i)
-        ./iterate.sh "$@"
-        ;;
-    adjust|j)
-        ./adjust.sh "$@"
-        ;;
-    document|d)
-        ./document.sh "$@"
-        ;;
-    *)
-        if [[ -n "$command" ]]; then
-            # Treat as change request
-            start_workflow "$command"
-        else
-            show_help
-            exit 1
-        fi
-        ;;
-esac
+# TODO: this is not parsing the arguments as expected ./llmdev -c /tmp would cause $1==-c
+# case $1 in
+#     help|-h|--help)
+#         show_help
+#         exit 0
+#         ;;
+#     assess|a)
+#         ./assess.sh "$@"
+#         ;;
+#     plan|p)
+#         ./plan.sh "$@"
+#         ;;
+#     iterate|i)
+#         ./iterate.sh "$@"
+#         ;;
+#     adjust|j)
+#         ./adjust.sh "$@"
+#         ;;
+#     document|d)
+#         ./document.sh "$@"
+#         ;;
+#     *)
+#         if [[ -n "$1" ]]; then
+#             # Treat as change request
+#             start_workflow "$@"
+#         else
+#             show_help
+#             exit 1
+#         fi
+#         ;;
+# esac

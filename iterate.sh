@@ -37,7 +37,7 @@ check_dependencies "files-to-prompt" "llm" "lazygit" "git" "micro"
 
 # Function to check if there are any remaining tasks
 has_remaining_tasks() {
-    grep -q "TODO" improvement_tasks.md
+    latest_workflow 'wp.body' | grep -q "TODO"
     return $?
 }
 

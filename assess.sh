@@ -76,16 +76,19 @@ Total lines: '"$total_lines"''
 }
 
 generate_code_analysis() {
-    local dir=$1
-    local CHANGE_REQUEST=$2
+    local DIR="$1"
+    local CHANGE_REQUEST="$2"
+    local EXT="$3"
 
-    # Create the analysis using files-to-prompt and llm
-    files-to-prompt "$dir" | llm -m son 'Please analyze the provided code and list and describe important sections relevant to the change request wrapped in ---:
+    # Create the analysis using files-to-prompt and llm   
+    files-to-prompt -n -e "$EXT" "$DIR" | llm -m son '
+    You are helping a software developer assess their code base before planning the implemenation of the change request wrapped in ---:
     
     ---
     '"$CHANGE_REQUEST"'
     ---
     
+    Please help identify key snippets of code, the files, line numbers and brief description of why the section of code is relevant to the change request.
     Provide the tightest relevant line ranges possible. Please limit the output to and format as:
 
     ### filename
@@ -157,8 +160,14 @@ WORKFLOW_ID=$(insert_workflow "$CHANGE_REQUEST")
 CODEBASE_PATH=$(cd "$CODEBASE_PATH" && pwd)
 
 echo "Starting assessment of codebase at: $CODEBASE_PATH"
-echo_metrics "$CODEBASE_PATH" "$TOTAL_FILES" "$TOTAL_LINES"
-insert_metrics "$WORKFLOW_ID" "$TOTAL_FILES" "$TOTAL_LINES"
+# echo_metrics "$CODEBASE_PATH" "$TOTAL_FILES" "$TOTAL_LINES"
+## Metrics
+# '"$(echo_metrics "$CODEBASE_PATH" "$TOTAL_FILES" "$TOTAL_LINES" | sed 's/^/- /')"'
+# insert_metrics "$WORKFLOW_ID" "$TOTAL_FILES" "$TOTAL_LINES"
+
+
+echo "Asking LLM for code assessment..."
+CODE_ANALYSIS=$(generate_code_analysis "$CODEBASE_PATH" "$CHANGE_REQUEST" "$EXTENSIONS" | tr "'" '"')
 
 # Create markdown report
 REPORT='# Assessment Report
@@ -169,11 +178,8 @@ REPORT='# Assessment Report
 '"$CHANGE_REQUEST"'
 - **Directory:** '"$CODEBASE_PATH"'
 
-## Metrics
-'"$(echo_metrics "$CODEBASE_PATH" "$TOTAL_FILES" "$TOTAL_LINES" | sed 's/^/- /')"'
-
 ## Scope
-'"$(generate_code_analysis "$CODEBASE_PATH" "$CHANGE_REQUEST" | tr "'" '"')"'
+'""'
 '
 
 echo "$REPORT"
