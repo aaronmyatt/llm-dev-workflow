@@ -3,6 +3,12 @@
 # Exit on error
 set -e
 
+
+test_workflow_id_from_stdin() {
+    echo "123" | ./assess.sh "test request" -c ./testdir
+    assertEquals "Workflow ID not properly read" "123" "$WORKFLOW_ID"
+}
+
 echo "=== Testing assess.sh ==="
 echo
 

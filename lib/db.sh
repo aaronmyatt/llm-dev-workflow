@@ -56,6 +56,17 @@ insert_workflow() {
     sqlite3 "$LLMDEV_DB" "INSERT INTO workflows (change_request) VALUES ('$change_request') RETURNING id;"
 }
 
+update_workplan() {
+    local column="$1"
+    local update="$2"
+    local workplan_id="$3"
+    db_operation "UPDATE workplan SET $column='$update' where workflow_id=$workplan_id"
+}
+
+update_workplan_body() {
+    update_workplan 'body' "$1" "$2"
+}
+
 sanitize_input() {
     sqlite3 :memory: "SELECT quote('$1');"
 }
@@ -68,7 +79,7 @@ insert_assessment() {
 
 latest_assessment() {
     local column=${1:-'body'}
-    latest_record 'assessment' "$column"
+    latest_record 'assessments' "$column"
 }
 
 latest_workplan() {
@@ -77,7 +88,7 @@ latest_workplan() {
 }
 
 latest_record() {
-    local table=${1:-'assessment'}
+    local table=${1:-'assessments'}
     local column=${2:-'body'}
     db_operation "SELECT $column FROM $table ORDER BY created_at DESC LIMIT 1"
 }
@@ -85,6 +96,11 @@ latest_record() {
 latest_workflow(){
     local column=${1:-'body'}
     db_operation "select $column from workflows w left join assessments a on a.workflow_id = w.id left join workplan wp on wp.workflow_id = w.id ORDER BY w.created_at DESC LIMIT 1;"
+}
+
+workflow_exists() {
+    local id=${1:-0}
+    sqlite3 "$LLMDEV_DB" "SELECT EXISTS(SELECT 1 FROM workflows WHERE id=$id);"
 }
 
 insert_metrics() {

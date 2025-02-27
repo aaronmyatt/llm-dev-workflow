@@ -17,6 +17,8 @@
 
 set -e
 
+. ./lib/db.sh
+
 check_dependencies() {
     local missing=0
     for cmd in "$@"; do
@@ -41,23 +43,26 @@ has_remaining_tasks() {
 
 # Function to display current task
 function display_current_task() {
-    NEXT_TASK_NUM=$(grep "^[0-9]\." improvement_tasks.md | grep -v "DONE" | head -n 1 | cut -d'.' -f1)
+    local WORKPLAN=$(latest_workflow 'wp.body')
+
+    NEXT_TASK_NUM=$(echo "$WORKPLAN" | grep "^[0-9]\." | grep -v "DONE" | head -n 1 | cut -d'.' -f1)
     if [[ -n "$NEXT_TASK_NUM" ]]; then
         echo "Current task:"
         # Find the start line of the current task
-        START_LINE=$(grep -n "^$NEXT_TASK_NUM\." improvement_tasks.md | cut -d':' -f1)
+        START_LINE=$(echo "$WORKPLAN" | grep -n "^$NEXT_TASK_NUM\." | cut -d':' -f1)
+
 
         # Find the start line of the next task or end of file
         NEXT_START=$((NEXT_TASK_NUM + 1))
-        END_LINE=$(grep -n "^$NEXT_START\." improvement_tasks.md | cut -d':' -f1)
+        END_LINE=$(echo "$WORKPLAN" | grep -n "^$NEXT_START\." | cut -d':' -f1)
 
         if [[ -z "$END_LINE" ]]; then
             # If there's no next task, display to the end of file
-            sed -n "${START_LINE},\$p" improvement_tasks.md | bat -l markdown --style=plain
+            echo "$WORKPLAN" | sed -n "${START_LINE},\$p" | bat -l markdown --style=plain
         else
             # Display from current task to line before next task
             END_LINE=$((END_LINE - 1))
-            sed -n "${START_LINE},${END_LINE}p" improvement_tasks.md | bat -l markdown --style=plain
+            echo "$WORKPLAN" | sed -n "${START_LINE},${END_LINE}p" | bat -l markdown --style=plain
         fi
         return 0
     else
@@ -76,6 +81,8 @@ trap 'stty "$old_tty_settings"' EXIT
 stty -echo -icanon min 1
 
 # Main loop
+WORKPLAN=$(latest_workflow 'wp.body')
+WORKFLOW_ID=$(latest_workflow 'w.id')
 while has_remaining_tasks; do
     if ! display_current_task; then
         echo "All tasks completed!"
@@ -88,8 +95,10 @@ while has_remaining_tasks; do
         case "$confirm" in
             [Yy])
                 echo # New line after keystroke
-                NEXT_TASK_NUM=$(grep "^[0-9]\." improvement_tasks.md | grep -v "DONE" | head -n 1 | cut -d'.' -f1)
-                sed -i "" "/^$NEXT_TASK_NUM\./s/TODO/DONE/g" improvement_tasks.md
+                NEXT_TASK_NUM=$(echo "$WORKPLAN" | grep "^[0-9]\." | grep -v "DONE" | head -n 1 | cut -d'.' -f1)
+                WORKPLAN=$(echo "$WORKPLAN" | sed "/^$NEXT_TASK_NUM\./s/TODO/DONE/g")
+                update_workplan_body "$WORKPLAN" "$WORKFLOW_ID"
+
                 echo "Task $NEXT_TASK_NUM marked as complete"
                 echo
                 break

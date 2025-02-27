@@ -108,6 +108,11 @@ while [[ $# -gt 0 ]]; do
             EXTENSIONS="$1"
             shift
             ;;
+        # -wid|--workflow_id)
+        #     shift
+        #     WORKFLOW_ID="$1"
+        #     shift
+        #     ;;
         -c|--context)
             shift
             CODEBASE_PATH="$1"
@@ -141,7 +146,13 @@ if [[ -n "$CHANGE_REQUEST" ]]; then
     echo "Change request: $CHANGE_REQUEST"
 fi
 
+
 WORKFLOW_ID=$(insert_workflow "$CHANGE_REQUEST")
+
+# if [[ -n "$WORKFLOW_ID" ]] && ! workflow_exists "$WORKFLOW_ID"; then
+#     echo "Error: Invalid workflow ID provided"
+#     exit 1
+# fi
 
 # Convert to absolute path
 CODEBASE_PATH=$(cd "$CODEBASE_PATH" && pwd)
