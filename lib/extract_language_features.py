@@ -6,9 +6,6 @@ from collections import defaultdict
 import tree_sitter_python as tspython
 from tree_sitter import Language, Parser
 
-# Define paths to your repositories
-REPO_DIR = os.path.expanduser("~/path/to/tree-sitter-repos")
-
 # Define languages you want to support
 LANGUAGES = {
     'python': Language(tspython.language()),
@@ -17,32 +14,65 @@ LANGUAGES = {
     # Add more languages as needed
 }
 
-def extract_features(node, features=None, path=None):
-    """
-    Recursively extract language features from the syntax tree.
-    
-    Args:
-        node: The current tree-sitter node
-        features: Dictionary to collect features
-        path: Current path in the tree
-        
-    Returns:
-        Dictionary of extracted features
-    """
-    if features is None:
-        features = defaultdict(int)
-    if path is None:
-        path = []
-    
-    # Count this node type
+def walk_tree(node, language):
+    """Recursively walk the syntax tree and extract features."""
+    features = {
+        'functions': [],
+        'classes': [],
+        'variables': [],
+        'imports': []
+    }
+
+    # Process current node based on its type
     node_type = node.type
-    features[node_type] += 1
-    
-    # Process children
+
+    # Python-specific node processing
+    if language == 'python':
+        if node_type == 'function_definition':
+            # Find the identifier child node which is the function name
+            for child in node.children:
+                if child.type == 'identifier':
+                    features['functions'].append(child.text.decode('utf8'))
+                    break
+
+        elif node_type == 'class_definition':
+            # Find the identifier child node which is the class name
+            for child in node.children:
+                if child.type == 'identifier':
+                    features['classes'].append(child.text.decode('utf8'))
+                    break
+
+        elif node_type == 'import_statement' or node_type == 'import_from_statement':
+            for child in node.children:
+                # import pdb; pdb.set_trace()
+                if child.type == 'dotted_name':
+                    features['imports'].append(child.text.decode('utf8').strip())
+                    break
+
+    # JavaScript-specific node processing
+    elif language == 'javascript':
+        if node_type == 'function_declaration':
+            # Find the identifier child node which is the function name
+            for child in node.children:
+                if child.type == 'identifier':
+                    features['functions'].append(child.text.decode('utf8'))
+                    break
+
+        elif node_type == 'class_declaration':
+            # Find the identifier child node which is the class name
+            for child in node.children:
+                if child.type == 'identifier':
+                    features['classes'].append(child.text.decode('utf8'))
+                    break
+
+    # Add more language-specific processing as needed
+
+    # Recursively process child nodes and merge their features
     for child in node.children:
-        extract_features(child, features, path + [node_type])
-    
-    import ipdb; ipdb.set_trace()
+        child_features = walk_tree(child, language)
+        for feature_type, items in child_features.items():
+            features[feature_type].extend(items)
+
     return features
 
 def analyze_file(file_path, language='python'):
@@ -56,37 +86,33 @@ def analyze_file(file_path, language='python'):
     Returns:
         Dictionary of extracted features
     """
-    try:
-        with open(file_path, 'rb') as f:
-            source_code = f.read()
+    tree = ast_tree_for_file(file_path, language)
+    
+    features = walk_tree(tree.root_node, language)
+    # import ipdb; ipdb.set_trace()
+    return features
+
+
+def ast_tree_for_file(file_path, language):
+    with open(file_path, 'rb') as f:
+        source_code = f.read()
         
-        parser = Parser()
-        parser.set_language(LANGUAGES.get(language))
-        tree = parser.parse(source_code)
-        
-        features = extract_features(tree.root_node)
-        import ipdb; ipdb.set_trace()
-        return features
-    except Exception as e:
-        print(f"Error analyzing file {file_path}: {e}")
-        return None
+    parser = Parser(LANGUAGES.get(language))
+    tree = parser.parse(source_code)
+    return tree
 
 def main():
-    try:
-        # Default to analyzing this file if no arguments provided
-        file_path = sys.argv[1] if len(sys.argv) > 1 else './lib/extract_language_features.py'
-        
-        print(f"Analyzing {file_path}...")
-        features = analyze_file(file_path)
-        
-        if features:
-            print(json.dumps(features, indent=2))
-            print(f"Found {sum(features.values())} nodes of {len(features)} different types")
-        
-        import ipdb; ipdb.set_trace()
-    except Exception as e:
-        print(f"Error: {e}")
-        sys.exit(1)
+    # Default to analyzing this file if no arguments provided
+    file_path = sys.argv[1] if len(sys.argv) > 1 else './lib/extract_language_features.py'
+    
+    print(f"Analyzing {file_path}...")
+    features = analyze_file(file_path)
+    
+    if features:
+        print(json.dumps(features, indent=2))
+    
+    import ipdb; ipdb.set_trace()
+
 
 if __name__ == "__main__":
      main()
