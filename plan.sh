@@ -24,7 +24,6 @@ fi
 # Read and parse the assessment report
 echo "Reading assessment data from db..."
 
-TASKS_FILE="improvement_tasks.md"
 WORKPLAN=""
 # Extract key information from the assessment report
 CHANGE_REQUEST=$(echo "$ASSESSMENT_REPORT" | sed -n '/Change Request:/,/Directory:/p'| grep -v "Change Request:" | grep -v "Directory:" | tr -d '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')

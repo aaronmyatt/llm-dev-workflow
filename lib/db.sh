@@ -67,6 +67,13 @@ update_workplan_body() {
     update_workplan 'body' "$1" "$2"
 }
 
+mark_next_task_done() {
+    NEXT_TASK_NUM=$(echo "$1" | grep "^[0-9]\." | grep -v "DONE" | head -n 1 | cut -d'.' -f1)
+    WORKPLAN=$(echo "$1" | sed "/^$NEXT_TASK_NUM\..*TODO$/s/TODO/DONE/")
+    update_workplan_body "$WORKPLAN" "$2"
+    echo "$NEXT_TASK_NUM"
+}
+
 sanitize_input() {
     sqlite3 :memory: "SELECT quote('$1');"
 }
@@ -101,6 +108,19 @@ latest_workflow(){
 workflow_exists() {
     local id=${1:-0}
     sqlite3 "$LLMDEV_DB" "SELECT EXISTS(SELECT 1 FROM workflows WHERE id=$id);"
+}
+
+mark_task_done() {
+    local task_num=$1
+    local workflow_id=$2
+    local completion_time=$(date "+%Y-%m-%d %H:%M:%S")
+    
+    db_operation "UPDATE workplan 
+        SET body = REPLACE(body, "$task_num. " || substr(body, instr(body, "$task_num. ") + length("$task_num. "), 
+            instr(substr(body, instr(body, "$task_num. ")), "TODO") - 1) || "TODO",
+            "$task_num. " || substr(body, instr(body, "$task_num. ") + length("$task_num. "), 
+            instr(substr(body, instr(body, "$task_num. ")), "TODO") - 1) || "DONE")
+        WHERE workflow_id = $workflow_id;"
 }
 
 insert_metrics() {

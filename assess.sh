@@ -8,7 +8,6 @@
 # Exit on error
 set -e
 
-
 total_files() { 
     echo $(find "$1" -type f | wc -l) 
 }
@@ -17,7 +16,6 @@ total_lines() {
 }
 
 REPORT=''
-REPORT_PATH="assessment_report.md"
 CHANGE_REQUEST=""
 CODEBASE_PATH="."
 EXTENSIONS=""

@@ -54,22 +54,21 @@ function display_current_task() {
 
         # Find the start line of the next task or end of file
         NEXT_START=$((NEXT_TASK_NUM + 1))
-        END_LINE=$(echo "$WORKPLAN" | grep -n "^$NEXT_START\." | cut -d':' -f1)
+        END_LINE=$(echo "$WORKPLAN" | grep -n "^$NEXT_START\.[[:space:]]" | head -n 1 | cut -d':' -f1)
 
         if [[ -z "$END_LINE" ]]; then
             # If there's no next task, display to the end of file
-            echo "$WORKPLAN" | sed -n "${START_LINE},\$p" | bat -l markdown --style=plain
+            echo "$WORKPLAN" | sed -n "${START_LINE},\$" | bat -l markdown --style=plain
         else
             # Display from current task to line before next task
             END_LINE=$((END_LINE - 1))
-            echo "$WORKPLAN" | sed -n "${START_LINE},${END_LINE}p" | bat -l markdown --style=plain
+            echo "$WORKPLAN" | sed -n "${START_LINE},${END_LINE}" | bat -l markdown --style=plain
         fi
         return 0
     else
         return 1
     fi
 }
-
 
 # Save current terminal settings
 old_tty_settings=$(stty -g)
@@ -95,9 +94,7 @@ while has_remaining_tasks; do
         case "$confirm" in
             [Yy])
                 echo # New line after keystroke
-                NEXT_TASK_NUM=$(echo "$WORKPLAN" | grep "^[0-9]\." | grep -v "DONE" | head -n 1 | cut -d'.' -f1)
-                WORKPLAN=$(echo "$WORKPLAN" | sed "/^$NEXT_TASK_NUM\./s/TODO/DONE/g")
-                update_workplan_body "$WORKPLAN" "$WORKFLOW_ID"
+                NEXT_TASK_NUM=$(mark_next_task_done "$WORKPLAN" "$WORKFLOW_ID")
 
                 echo "Task $NEXT_TASK_NUM marked as complete"
                 echo
