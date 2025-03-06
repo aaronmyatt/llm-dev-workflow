@@ -4,13 +4,13 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-ipython = "*"
 tree-sitter = "*"
 ipdb = "*"
 tree-sitter-python = "*"
 tree-sitter-javascript = "*"
 tree-sitter-typescript = "*"
 tree-sitter-bash = "*"
+directory-tree = "*"
 
 [dev-packages]
 
