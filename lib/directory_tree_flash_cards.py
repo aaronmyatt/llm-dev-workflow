@@ -149,6 +149,56 @@ def save_flashcards_to_files(flashcards, output_dir="flashcards"):
 
 def parseDirectoriesFromTree(tree):
     """Extracts directories from an onlyDirs invocation of DisplayTree and verifies they exist"""
+    import os
+    
+    # Get the string representation of the tree
+    tree_str = str(tree)
+    
+    # Split the tree into lines
+    lines = tree_str.strip().split('\n')
+    
+    # Extract directory paths
+    directories = []
+    base_path = ""
+    
+    for line in lines:
+        if not line.strip():
+            continue
+        
+        # Calculate indentation level
+        indent = len(line) - len(line.lstrip())
+        dir_name = line.strip()
+        
+        # If this is the root directory (no indentation)
+        if indent == 0:
+            base_path = dir_name
+            directories.append(base_path)
+        else:
+            # Find the parent directory based on indentation
+            parent_path = None
+            parent_indent = -1
+            
+            # Go through the directories we've already processed
+            for i, (path, level) in enumerate([(d, len(d.split('/')) - 1) for d in directories]):
+                # If this directory is at the previous indentation level
+                if level == indent - 1:
+                    parent_path = path
+                    parent_indent = level
+            
+            if parent_path:
+                # Construct the full path
+                full_path = os.path.join(parent_path, dir_name)
+                directories.append(full_path)
+    
+    # Verify directories exist
+    verified_dirs = []
+    for directory in directories:
+        if os.path.isdir(directory):
+            verified_dirs.append(directory)
+        else:
+            print(f"Warning: Directory '{directory}' does not exist")
+    
+    return verified_dirs
 
 
 def main():
@@ -161,16 +211,18 @@ def main():
     # Generate the directory tree
     directoryTree = DisplayTree(directory_path, stringRep=True, onlyDirs=True)
     directories = parseDirectoriesFromTree(directoryTree)
-
-    tree_text = str(tree)
+    
+    # Generate a full tree for flashcards
+    fullTree = DisplayTree(directory_path)
+    tree_text = str(fullTree)
     
     # Generate flashcards by level (new method)
     flashcards = generate_flashcards_by_level(tree_text)
-    import ipdb; ipdb.set_trace()
-
     
     # Save the flashcards
     save_flashcards_to_files(flashcards)
+    
+    print(f"Processed {len(directories)} directories")
 
 
 if __name__ == "__main__":
