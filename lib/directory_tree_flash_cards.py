@@ -24,7 +24,11 @@ def generate_flashcards(tree_text):
         
         # Find the indentation level
         indent = len(original_line) - len(original_line.lstrip())
+        
+        # Strip ASCII tree characters (├──, └──, etc.) from the filename
         file_or_dir_name = original_line.strip()
+        if '──' in file_or_dir_name:
+            file_or_dir_name = file_or_dir_name.split('──', 1)[1].strip()
         
         # Replace the line with a blank of the same length, preserving indentation
         spaces = ' ' * indent
@@ -97,7 +101,7 @@ def main():
     # Save the flashcards
     save_flashcards_to_files(flashcards)
     
-    print(f"Processed {len(directories)} directories")
+    print(f"Generated flashcards for the directory structure")
 
 if __name__ == "__main__":
      main()
