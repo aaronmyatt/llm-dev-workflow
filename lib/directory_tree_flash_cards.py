@@ -1,4 +1,5 @@
 from directory_tree import DisplayTree
+import sys
 
 def generate_flashcards_by_level(tree_text):
     """
@@ -146,10 +147,11 @@ def save_flashcards_to_files(flashcards, output_dir="flashcards"):
     
     print(f"Generated {len(flashcards)} flashcards in {output_dir}/")
 
+def parseDirectoriesFromTree(tree):
+    """Extracts directories from an onlyDirs invocation of DisplayTree and verifies they exist"""
+
+
 def main():
-    import sys
-    from directory_tree import DisplayTree
-    
     # Check if a directory path was provided
     if len(sys.argv) > 1:
         directory_path = sys.argv[1]
@@ -157,11 +159,15 @@ def main():
         directory_path = "."  # Default to current directory
     
     # Generate the directory tree
-    tree = DisplayTree(directory_path)
+    directoryTree = DisplayTree(directory_path, stringRep=True, onlyDirs=True)
+    directories = parseDirectoriesFromTree(directoryTree)
+
     tree_text = str(tree)
     
     # Generate flashcards by level (new method)
     flashcards = generate_flashcards_by_level(tree_text)
+    import ipdb; ipdb.set_trace()
+
     
     # Save the flashcards
     save_flashcards_to_files(flashcards)
