@@ -1,6 +1,90 @@
 from directory_tree import DisplayTree
 
+def generate_flashcards_by_level(tree_text):
+    """
+    Generate flashcards organized by directory level to reduce noise and focus on smaller contexts.
+    Each flashcard will only show nodes at the same directory level within the same parent.
+    """
+    # Split the tree into lines
+    lines = tree_text.strip().split('\n')
+    flashcards = []
+    
+    # Group lines by their parent directory (based on indentation)
+    level_groups = {}
+    
+    for i, line in enumerate(lines):
+        if not line.strip():
+            continue
+            
+        # Calculate indentation level
+        indent = len(line) - len(line.lstrip())
+        
+        # Find parent line (the line above with less indentation)
+        parent_indent = -1
+        parent_index = -1
+        
+        for j in range(i-1, -1, -1):
+            if not lines[j].strip():
+                continue
+                
+            current_indent = len(lines[j]) - len(lines[j].lstrip())
+            if current_indent < indent:
+                parent_indent = current_indent
+                parent_index = j
+                break
+        
+        # Create a key based on parent index and indent level
+        group_key = f"{parent_index}:{indent}"
+        
+        if group_key not in level_groups:
+            level_groups[group_key] = []
+        
+        level_groups[group_key].append(i)
+    
+    # Create flashcards for each group
+    for group_key, indices in level_groups.items():
+        # Skip groups with only one item (not interesting for flashcards)
+        if len(indices) <= 1:
+            continue
+            
+        # For each item in the group, create a flashcard
+        for target_idx in indices:
+            # Create a copy of the lines for this context
+            context_lines = []
+            
+            # Get parent line if it exists
+            parent_idx = int(group_key.split(':')[0])
+            if parent_idx >= 0:
+                context_lines.append(lines[parent_idx])
+            
+            # Add all siblings (including the target line)
+            for idx in indices:
+                if idx == target_idx:
+                    # For the target line, replace with blank
+                    original_line = lines[idx]
+                    indent = len(original_line) - len(original_line.lstrip())
+                    spaces = ' ' * indent
+                    placeholder = spaces + "________"
+                    context_lines.append(placeholder)
+                else:
+                    context_lines.append(lines[idx])
+            
+            # Create the flashcard
+            question_tree = '\n'.join(context_lines)
+            answer = lines[target_idx].strip()
+            
+            flashcard = {
+                "question": question_tree,
+                "answer": answer,
+                "context": f"Level {len(group_key.split(':')[1])}"
+            }
+            
+            flashcards.append(flashcard)
+    
+    return flashcards
+
 def generate_flashcards(tree_text):
+    """Legacy function that creates flashcards for the entire tree at once"""
     # Split the tree into lines
     lines = tree_text.strip().split('\n')
     flashcards = []
@@ -54,13 +138,33 @@ def save_flashcards_to_files(flashcards, output_dir="flashcards"):
         
         with open(f"{output_dir}/card_{i+1}_answer.txt", "w") as f:
             f.write(card["answer"])
+        
+        # Save context if available
+        if "context" in card:
+            with open(f"{output_dir}/card_{i+1}_context.txt", "w") as f:
+                f.write(card["context"])
     
     print(f"Generated {len(flashcards)} flashcards in {output_dir}/")
 
 def main():
+    import sys
+    from directory_tree import DisplayTree
     
+    # Check if a directory path was provided
+    if len(sys.argv) > 1:
+        directory_path = sys.argv[1]
+    else:
+        directory_path = "."  # Default to current directory
     
-    import ipdb; ipdb.set_trace()
+    # Generate the directory tree
+    tree = DisplayTree(directory_path)
+    tree_text = str(tree)
+    
+    # Generate flashcards by level (new method)
+    flashcards = generate_flashcards_by_level(tree_text)
+    
+    # Save the flashcards
+    save_flashcards_to_files(flashcards)
 
 
 if __name__ == "__main__":
