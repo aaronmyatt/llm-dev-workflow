@@ -1,8 +1,10 @@
 from directory_tree import DisplayTree
 import sys
+import argparse
 from gitwalk import gitwalk as walk
 from pathlib import Path
 import os
+import fnmatch
 
 def generate_flashcards(tree_text):
     """Takes a textual tree representation of """
@@ -66,22 +68,41 @@ def save_flashcards_to_files(flashcards, output_dir="flashcards"):
     
     print(f"Generated {len(flashcards)} flashcards in {output_dir}/")
 
-def get_directories_for_path(path: str) -> list[str]:
+def get_directories_for_path(path: str, exclude_patterns: list = None) -> list[str]:
     """
     Get a list of all directories under the path provided.
     We are using gitwalk to respect the gitignore file if
     there is one found in `path`
+    
+    Args:
+        path: The directory path to scan
+        exclude_patterns: List of glob patterns to exclude
     """
+    if exclude_patterns is None:
+        exclude_patterns = []
+        
     directories = []
     for root, _, _ in walk(path):
         pathObj = Path(root)
         absolutePath = pathObj.absolute()
-        directories.append(absolutePath)
+        
+        # Check if this directory should be excluded
+        should_exclude = False
+        rel_path = str(absolutePath.relative_to(Path(path).absolute()))
+        
+        for pattern in exclude_patterns:
+            if fnmatch.fnmatch(rel_path, pattern) or fnmatch.fnmatch(str(absolutePath), pattern):
+                should_exclude = True
+                break
+                
+        if not should_exclude:
+            directories.append(absolutePath)
+            
     return directories
 
-def generate_flashcards_for_directory(path: str) -> list[str]:
+def generate_flashcards_for_directory(path: str, exclude_patterns: list = None) -> list[str]:
     # Generate the directory tree
-    directories = get_directories_for_path(path)
+    directories = get_directories_for_path(path, exclude_patterns)
 
     flashcards = []
     for directory in directories:
@@ -92,18 +113,23 @@ def generate_flashcards_for_directory(path: str) -> list[str]:
     return flashcards
 
 def main():
-    # Check if a directory path was provided
-    if len(sys.argv) > 1:
-        directory_path = sys.argv[1]
-    else:
-        directory_path = "."  # Default to current directory
+    # Set up argument parser
+    parser = argparse.ArgumentParser(description='Generate flashcards from directory structure')
+    parser.add_argument('directory', nargs='?', default='.', help='Directory to scan (default: current directory)')
+    parser.add_argument('-e', '--exclude', action='append', default=[], 
+                        help='Patterns to exclude (can be used multiple times)')
     
-    flashcards = generate_flashcards_for_directory(directory_path)
+    args = parser.parse_args()
+    
+    # Generate flashcards with exclude patterns
+    flashcards = generate_flashcards_for_directory(args.directory, args.exclude)
     
     # Save the flashcards
     save_flashcards_to_files(flashcards)
     
     print(f"Generated flashcards for the directory structure")
+    if args.exclude:
+        print(f"Excluded patterns: {', '.join(args.exclude)}")
 
 if __name__ == "__main__":
      main()
