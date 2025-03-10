@@ -13,6 +13,7 @@ tree-sitter-bash = "*"
 directory-tree = "*"
 markdownify = "*"
 requests = "*"
+gitwalk = "*"
 
 [dev-packages]
 

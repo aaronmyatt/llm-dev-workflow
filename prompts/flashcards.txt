@@ -1,15 +1,16 @@
-'Create 5 concise, simple, straightforward and distinct Anki cards to study the following webpage, each with a front and back. 
-Avoid repeating the content in the front on the back of the card. 
+'Create 10 concise, simple, straightforward and distinct Anki cards to study the following webpage, each with a front and back. 
+Avoid repeating the content on the front on the back of the card. 
 In particular, if the front is a question and the back an answer, avoid repeating the phrasing of the question as the initial part of the answer. 
-Avoid explicitly referring to the author or the article in the cards, and instead treat the article as factual and independent of the author. Use the following format:
+Avoid explicitly referring to the author or the article in the cards, and instead treat the article as factual and independent of the author. 
+Use the following markdown format:
 
-1. Front: [front section of card 1]
-Back: [back section of card 1]
+```
+## Front
 
-2. Front: [front section of card 2]
-Back: [back section of card 2]
+## Back
+```
 
-... and so on.
+Please only respond with the markdown.
 
 Here is the webpage content:
 $content'
