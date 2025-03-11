@@ -58,8 +58,8 @@ def save_flashcards_to_files(flashcards, output_dir="flashcards"):
     os.makedirs(output_dir, exist_ok=True)
 
     with open(f"{output_dir}/apycards.md", 'w') as f:
-        for card in flashcards:
-            f.write('## question\n')
+        for idx, card in enumerate(flashcards):
+            f.write(f"# Note {idx}")
             f.write(card['question'])
             f.write('\n\n')
             f.write('## answer\n')
