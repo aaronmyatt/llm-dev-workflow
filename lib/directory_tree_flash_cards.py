@@ -60,9 +60,15 @@ def save_flashcards_to_files(flashcards, output_dir="flashcards"):
     with open(f"{output_dir}/apycards.md", 'w') as f:
         for idx, card in enumerate(flashcards):
             f.write(f"# Note {idx}")
-            f.write(card['question'])
             f.write('\n\n')
-            f.write('## answer\n')
+            f.write('## Front\n')
+            f.write('```\n')
+            f.write('Project: llm-dev-workflow\n')
+            f.write('Which file or directory is missing from this file system tree?\n')
+            f.write(card['question'])
+            f.write('\n```')
+            f.write('\n\n')
+            f.write('## Back\n')
             f.write(card['answer'])
             f.write('\n\n')
     
