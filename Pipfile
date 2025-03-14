@@ -14,6 +14,7 @@ directory-tree = "*"
 markdownify = "*"
 requests = "*"
 gitwalk = "*"
+anki = "*"
 
 [dev-packages]
 
